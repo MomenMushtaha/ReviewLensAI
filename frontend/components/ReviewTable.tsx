@@ -85,7 +85,7 @@ export function ReviewTable({ projectId }: { projectId: string }) {
                   onClick={() => setExpanded(expanded === r.id ? null : r.id)}
                 >
                   <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
-                    {r.reviewer_name || "Anonymous"}
+                    {r.author || "Anonymous"}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     {r.rating ? (
@@ -93,13 +93,13 @@ export function ReviewTable({ projectId }: { projectId: string }) {
                     ) : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {r.sentiment && (
-                      <Badge variant={SENTIMENT_VARIANTS[r.sentiment] || "neutral"}>
-                        {r.sentiment}
+                    {r.sentiment_label && (
+                      <Badge variant={SENTIMENT_VARIANTS[r.sentiment_label] || "neutral"}>
+                        {r.sentiment_label}
                       </Badge>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{formatDate(r.date)}</td>
+                  <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{formatDate(r.created_date)}</td>
                   <td className="px-4 py-3 text-gray-600">
                     <span className={expanded === r.id ? "" : "line-clamp-2"}>{r.body}</span>
                   </td>
