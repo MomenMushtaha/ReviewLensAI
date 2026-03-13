@@ -46,7 +46,12 @@ export function UrlInputForm() {
       } catch {}
       router.push(`/project/${project_id}?loading=true`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to start pipeline");
+      console.log("[v0] Pipeline error:", err);
+      if (err instanceof TypeError && err.message.includes("fetch")) {
+        setError("Cannot connect to backend API. Please ensure the backend server is running.");
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to start pipeline");
+      }
     } finally {
       setLoading(false);
     }
