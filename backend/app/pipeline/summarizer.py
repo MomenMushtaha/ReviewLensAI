@@ -3,85 +3,92 @@ import random
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from tenacity import retry, stop_after_attempt, wait_exponential
-import anthropic
+from openai import OpenAI
 
 from app.config import settings
 from app.models.analysis import Analysis
 from app.utils.text_cleaner import truncate
 
-_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+_client = OpenAI(api_key=settings.openai_api_key)
 
 SUMMARIZER_TOOL = {
-    "name": "produce_summary",
-    "description": "Produce structured analysis summary for product reviews",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "executive_summary": {
-                "type": "string",
-                "description": "2-3 paragraph executive summary of the product reputation"
-            },
-            "pain_points": {
-                "type": "array",
-                "items": {
+    "type": "function",
+    "function": {
+        "name": "produce_summary",
+        "description": "Produce structured analysis summary for product reviews",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "executive_summary": {
+                    "type": "string",
+                    "description": "2-3 paragraph executive summary of the product reputation"
+                },
+                "pain_points": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "description": {"type": "string"},
+                            "frequency": {"type": "string", "enum": ["high", "medium", "low"]}
+                        },
+                        "required": ["title", "description", "frequency"]
+                    }
+                },
+                "highlights": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "description": {"type": "string"},
+                            "frequency": {"type": "string", "enum": ["high", "medium", "low"]}
+                        },
+                        "required": ["title", "description", "frequency"]
+                    }
+                },
+                "recommendations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "priority": {"type": "string", "enum": ["high", "medium", "low"]},
+                            "action": {"type": "string"},
+                            "rationale": {"type": "string"}
+                        },
+                        "required": ["priority", "action", "rationale"]
+                    }
+                },
+                "theme_labels": {
                     "type": "object",
-                    "properties": {
-                        "title": {"type": "string"},
-                        "description": {"type": "string"},
-                        "frequency": {"type": "string", "enum": ["high", "medium", "low"]}
-                    },
-                    "required": ["title", "description", "frequency"]
+                    "description": "Map of cluster index (as string) to human-readable theme label",
+                    "additionalProperties": {"type": "string"}
                 }
             },
-            "highlights": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "title": {"type": "string"},
-                        "description": {"type": "string"},
-                        "frequency": {"type": "string", "enum": ["high", "medium", "low"]}
-                    },
-                    "required": ["title", "description", "frequency"]
-                }
-            },
-            "recommendations": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "priority": {"type": "string", "enum": ["high", "medium", "low"]},
-                        "action": {"type": "string"},
-                        "rationale": {"type": "string"}
-                    },
-                    "required": ["priority", "action", "rationale"]
-                }
-            },
-            "theme_labels": {
-                "type": "object",
-                "description": "Map of cluster index (as string) to human-readable theme label",
-                "additionalProperties": {"type": "string"}
-            }
-        },
-        "required": ["executive_summary", "pain_points", "highlights", "recommendations", "theme_labels"]
+            "required": ["executive_summary", "pain_points", "highlights", "recommendations", "theme_labels"]
+        }
     }
 }
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-def _call_claude(system_prompt: str, user_prompt: str) -> dict:
-    response = _client.messages.create(
-        model=settings.claude_model,
+def _call_openai(system_prompt: str, user_prompt: str) -> dict:
+    response = _client.chat.completions.create(
+        model=settings.openai_model,
         max_tokens=1500,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_prompt}],
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
         tools=[SUMMARIZER_TOOL],
-        tool_choice={"type": "tool", "name": "produce_summary"},
+        tool_choice={"type": "function", "function": {"name": "produce_summary"}},
     )
-    for block in response.content:
-        if block.type == "tool_use" and block.name == "produce_summary":
-            return block.input
-    raise ValueError("Claude did not call produce_summary tool")
+    msg = response.choices[0].message
+    if msg.tool_calls:
+        for tc in msg.tool_calls:
+            if tc.function.name == "produce_summary":
+                return json.loads(tc.function.arguments)
+    raise ValueError("OpenAI did not call produce_summary tool")
 
 
 async def summarize(
@@ -92,7 +99,7 @@ async def summarize(
     progress_cb=None,
 ) -> dict:
     if progress_cb:
-        await progress_cb("summarizing", 10, "Preparing review sample for Claude…")
+        await progress_cb("summarizing", 10, "Preparing review sample for AI…")
 
     # Sample reviews: top 5 positive, top 5 negative, 20 random
     all_reviews = analysis_data.get("sampled_reviews", [])
@@ -140,9 +147,9 @@ Please produce a structured summary using the produce_summary tool."""
     )
 
     if progress_cb:
-        await progress_cb("summarizing", 40, "Calling Claude AI…")
+        await progress_cb("summarizing", 40, "Calling OpenAI…")
 
-    result = _call_claude(system_prompt, user_prompt)
+    result = _call_openai(system_prompt, user_prompt)
 
     if progress_cb:
         await progress_cb("summarizing", 80, "Saving summary…")

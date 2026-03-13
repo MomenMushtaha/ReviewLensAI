@@ -27,7 +27,7 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: "postgresql+asyncpg://postgres:postgres@localhost:5432/test"
-          ANTHROPIC_API_KEY: "sk-ant-test"
+          OPENAI_API_KEY: "sk-test"
         run: pytest tests/ -x -q --ignore=tests/test_ingester.py 2>/dev/null || true
 
   frontend:
