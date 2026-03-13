@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.project import Project
 from app.agents.rag_agent import answer
+from app.services.transcript import save_transcript, get_transcript, list_transcripts
 
 router = APIRouter()
 
@@ -57,6 +58,20 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
     history.append({"role": "assistant", "content": response_data["response"]})
     _chat_histories[req.session_id] = history[-12:]  # 6 turns × 2
 
+    # Auto-save transcript after each exchange
+    save_transcript(
+        session_id=req.session_id,
+        project_id=req.project_id,
+        project_name=project.product_name or "Unknown",
+        platform=project.platform or "Unknown",
+        user_message=req.message,
+        assistant_response=response_data["response"],
+        sources=response_data["sources"],
+        guardrail_triggered=response_data["guardrail_triggered"],
+        guardrail_category=response_data.get("guardrail_category"),
+        history=history,
+    )
+
     return ChatResponse(
         response=response_data["response"],
         sources=[SourceCitation(**s) for s in response_data["sources"]],
@@ -64,3 +79,18 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         guardrail_category=response_data.get("guardrail_category"),
         session_id=req.session_id,
     )
+
+
+@router.get("/transcripts")
+async def list_all_transcripts(project_id: str | None = None):
+    """List all transcripts, optionally filtered by project_id."""
+    return list_transcripts(project_id)
+
+
+@router.get("/transcripts/{session_id}")
+async def get_session_transcript(session_id: str):
+    """Get a specific transcript by session_id."""
+    transcript = get_transcript(session_id)
+    if not transcript:
+        raise HTTPException(status_code=404, detail="Transcript not found")
+    return transcript
