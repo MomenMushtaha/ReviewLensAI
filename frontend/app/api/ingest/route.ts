@@ -102,19 +102,28 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Insert in batches
+    // Insert in batches with upsert to handle duplicates
     const batchSize = 100;
+    let insertedCount = 0;
     for (let i = 0; i < reviewsToInsert.length; i += batchSize) {
       const batch = reviewsToInsert.slice(i, i + batchSize);
-      const { error: insertError } = await supabase
+      const { data: inserted, error: insertError } = await supabase
         .from('reviews')
-        .insert(batch);
+        .upsert(batch, { 
+          onConflict: 'body_hash',
+          ignoreDuplicates: true 
+        })
+        .select('id');
 
       if (insertError) {
         console.error('Error inserting reviews:', insertError);
         // Continue with partial insert
+      } else if (inserted) {
+        insertedCount += inserted.length;
       }
     }
+    
+    console.log('[v0] Inserted', insertedCount, 'reviews out of', reviewsToInsert.length);
 
     // Update project with actual count
     await supabase
