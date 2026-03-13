@@ -2,6 +2,8 @@
 
 **Review Intelligence Portal** — Scrape Trustpilot reviews, analyze them with AI, and ask questions about them through a guardrailed chat interface.
 
+> **Development Note (March 2026)**: Frontend development transitioned to Vercel v0. Codex on standby.
+
 ## Architecture
 
 ```
