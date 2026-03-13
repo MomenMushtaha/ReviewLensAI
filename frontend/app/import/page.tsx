@@ -101,7 +101,7 @@ export default function ImportPage() {
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
                       placeholder="https://www.trustpilot.com/review/example.com"
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-4 py-3 rounded-lg bg-white border border-border text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary"
                       required={activeTab === "url"}
                     />
                     <p className="text-xs text-muted-foreground mt-2">
@@ -145,7 +145,7 @@ export default function ImportPage() {
                       value={productName}
                       onChange={(e) => setProductName(e.target.value)}
                       placeholder="Enter product or company name"
-                      className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full px-4 py-3 rounded-lg bg-white border border-border text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                 </TabsContent>
