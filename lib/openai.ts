@@ -8,6 +8,16 @@ export const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 export default openai;
 
+// Generate embeddings for text
+export async function getEmbedding(text: string): Promise<number[]> {
+  const response = await openai.embeddings.create({
+    model: "text-embedding-3-small",
+    input: text.slice(0, 8000), // Limit input length
+    dimensions: 384, // Match pgvector dimension
+  });
+  return response.data[0].embedding;
+}
+
 // Tool definition for structured summary output
 export const SUMMARY_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   type: "function",
