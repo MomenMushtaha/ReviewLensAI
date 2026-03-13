@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { getProject, getProjectAnalysis } from "@/lib/api";
 import { PipelineProgress } from "@/components/PipelineProgress";
 import { SentimentChart } from "@/components/SentimentChart";
@@ -22,7 +22,6 @@ import type { Project, Analysis } from "@/types";
 export default function ProjectPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const router = useRouter();
   const projectId = params.id as string;
   const isLoading = searchParams.get("loading") === "true";
   const [project, setProject] = useState<Project | null>(null);
