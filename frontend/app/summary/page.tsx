@@ -93,7 +93,18 @@ function SummaryContent() {
           <AlertCircle className="h-8 w-8 text-[hsl(var(--negative))]" />
         </div>
         <h3 className="text-lg font-semibold text-[hsl(var(--foreground))] mb-2">Error loading project</h3>
-        <p className="text-sm text-[hsl(var(--muted-foreground))]">{error}</p>
+        <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6 max-w-sm text-center">{error}</p>
+        <div className="flex gap-3">
+          <Link href="/dashboard">
+            <Button variant="secondary">Back to Dashboard</Button>
+          </Link>
+          <button
+            onClick={() => loadData()}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-[hsl(var(--primary))] text-white hover:bg-[hsl(var(--primary)/0.9)] transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }

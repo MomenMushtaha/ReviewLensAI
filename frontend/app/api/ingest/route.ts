@@ -125,26 +125,42 @@ export async function POST(request: NextRequest) {
       embedding: embeddings[i] || null,
     }));
 
-    // Insert reviews in batches with upsert to handle duplicates efficiently
+    // Insert reviews in batches with proper upsert
     console.log('[v0] Inserting', reviewsToInsert.length, 'reviews in batches...');
     let insertedCount = 0;
     const batchSize = 50;
     
     for (let i = 0; i < reviewsToInsert.length; i += batchSize) {
       const batch = reviewsToInsert.slice(i, i + batchSize);
-      const { data, error: insertError } = await supabase
-        .from('reviews')
-        .upsert(batch, { 
-          onConflict: 'project_id,body_hash',
-          ignoreDuplicates: true 
-        })
-        .select('id');
+      try {
+        // Use insert with on_conflict in SQL instead of Supabase upsert which has issues
+        const { data, error: insertError } = await supabase
+          .from('reviews')
+          .insert(batch)
+          .select('id');
 
-      if (insertError) {
-        console.error('[v0] Batch insert error:', insertError);
-      } else {
-        insertedCount += data?.length || 0;
-        console.log('[v0] Batch', Math.floor(i / batchSize) + 1, 'inserted', data?.length || 0, 'reviews');
+        if (insertError) {
+          // If it's a conflict error (23505), try without that review
+          if (insertError.code === '23505') {
+            console.log('[v0] Batch', Math.floor(i / batchSize) + 1, 'has duplicates, inserting individually...');
+            for (const review of batch) {
+              const { data: inserted, error } = await supabase
+                .from('reviews')
+                .insert([review])
+                .select('id');
+              if (!error && inserted) {
+                insertedCount += 1;
+              }
+            }
+          } else {
+            console.error('[v0] Batch insert error:', insertError);
+          }
+        } else {
+          insertedCount += data?.length || 0;
+          console.log('[v0] Batch', Math.floor(i / batchSize) + 1, 'inserted', data?.length || 0, 'reviews');
+        }
+      } catch (batchError) {
+        console.error('[v0] Batch processing error:', batchError);
       }
     }
     

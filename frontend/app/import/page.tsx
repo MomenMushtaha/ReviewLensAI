@@ -33,11 +33,17 @@ export default function ImportPage() {
 
       const result = await runPipeline(formData);
       
+      // Only save if reviews were actually imported
+      if (!result.reviewCount || result.reviewCount === 0) {
+        setError("No reviews were imported. The URL may not exist or have no reviews. Please try a different URL.");
+        return;
+      }
+      
       const recent = JSON.parse(localStorage.getItem("recent_analyses") || "[]");
       recent.unshift({
         id: result.project_id,
-        product_name: productName || url.split("/").pop() || "Untitled",
-        review_count: 0,
+        product_name: result.productName || productName || url.split("/").pop() || "Untitled",
+        review_count: result.reviewCount,
         created_at: new Date().toISOString(),
       });
       localStorage.setItem("recent_analyses", JSON.stringify(recent.slice(0, 10)));
@@ -47,7 +53,17 @@ export default function ImportPage() {
         router.push(`/summary?projectId=${result.project_id}`);
       }, 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to import reviews");
+      const message = err instanceof Error ? err.message : "Failed to import reviews";
+      // Improve error messages
+      if (message.includes("404")) {
+        setError("Review page not found. Please check the URL and try again.");
+      } else if (message.includes("timeout") || message.includes("timed out")) {
+        setError("Import took too long. Please try again with a smaller URL or CSV file.");
+      } else if (message.includes("Failed to fetch")) {
+        setError("Network error. Please check your connection and try again.");
+      } else {
+        setError(message);
+      }
     } finally {
       setIsLoading(false);
     }
