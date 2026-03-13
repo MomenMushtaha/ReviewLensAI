@@ -12,14 +12,14 @@ This is a greenfield project for the FutureSight take-home assignment. The goal 
 |---|---|---|
 | Backend | Python 3.11 + FastAPI | Best ecosystem for ML/NLP; async-native; Pydantic v2 |
 | Frontend | Next.js 14 (App Router) | SSR, Vercel-native free deployment |
-| Database | SQLite via SQLAlchemy + aiosqlite | Zero cost, zero ops, file-backed |
-| Vector Store | ChromaDB (persistent, local) | Pure Python, embedded, free |
+| Database | Supabase PostgreSQL via SQLAlchemy + asyncpg | Hosted, free tier, no persistent disk needed on Render |
+| Vector Store | pgvector (Supabase built-in extension) | Eliminates ChromaDB; one service for both relational + vector data |
 | Embeddings | `sentence-transformers` (all-MiniLM-L6-v2) | Free, local, 384-dim, fast on CPU |
 | AI Model | claude-haiku-4-5 (default), claude-sonnet-4-6 (configurable) | Haiku for cost; configurable for quality |
 | Scraper | httpx + BeautifulSoup4 | Trustpilot is SSR; lighter than Playwright |
 | Progress | Server-Sent Events (SSE) | Real-time progress without WebSocket complexity |
 | Target Platform | Trustpilot (primary) + CSV upload (fallback) | JSON-LD + `__NEXT_DATA__` structured data — no brittle CSS selectors |
-| Deployment | Render free tier (backend) + Vercel (frontend) | Both have free tiers; Render persistent disk for SQLite/ChromaDB |
+| Deployment | Render free tier (backend) + Vercel (frontend) + Supabase (DB) | All free; no persistent disk required since DB is external |
 
 ---
 
@@ -31,9 +31,9 @@ ReviewLensAI/
 │   ├── app/
 │   │   ├── main.py                  # FastAPI app factory, CORS, lifespan
 │   │   ├── config.py                # Settings via pydantic-settings
-│   │   ├── database.py              # SQLAlchemy engine, ChromaDB client, embedder singleton
+│   │   ├── database.py              # SQLAlchemy engine (asyncpg), session factory, embedder singleton
 │   │   ├── models/
-│   │   │   ├── review.py            # Review ORM model
+│   │   │   ├── review.py            # Review ORM model (includes vector(384) embedding column)
 │   │   │   ├── project.py           # Project ORM model (tracks pipeline status)
 │   │   │   └── analysis.py          # Analysis + summary ORM model
 │   │   ├── schemas/
@@ -47,7 +47,7 @@ ReviewLensAI/
 │   │   │   ├── summarizer.py        # Stage 4: Claude API executive summary
 │   │   │   └── orchestrator.py      # Sequences stages + drives SSE progress
 │   │   ├── agents/
-│   │   │   ├── rag_agent.py         # ChromaDB retrieval + Claude chat
+│   │   │   ├── rag_agent.py         # pgvector similarity search + Claude chat
 │   │   │   ├── guardrails.py        # Pre/post scope filters
 │   │   │   └── prompts.py           # All system/user prompt templates
 │   │   ├── routers/
@@ -58,8 +58,6 @@ ReviewLensAI/
 │   │       └── text_cleaner.py      # HTML stripping, unicode normalization
 │   ├── alembic/
 │   │   └── versions/0001_initial.py
-│   ├── data/                        # Runtime data (gitignored; persistent on Render disk)
-│   │   └── .gitkeep
 │   ├── tests/
 │   │   ├── test_scraper.py
 │   │   ├── test_ingester.py
@@ -97,7 +95,7 @@ ReviewLensAI/
 │   └── .env.local.example
 ├── .github/workflows/
 │   └── ci.yml                        # Lint + test on push
-├── render.yaml                        # Render deployment config
+├── render.yaml                        # Render deployment config (no disk block needed)
 ├── .gitignore
 └── README.md
 ```
@@ -150,7 +148,7 @@ class RawReview(BaseModel):
 
 ## Component 2: Ingester (`backend/app/pipeline/ingester.py`)
 
-**Responsibilities:** `list[RawReview]` + project_id → normalize, deduplicate, persist to SQLite, embed into ChromaDB.
+**Responsibilities:** `list[RawReview]` + project_id → normalize, deduplicate, persist to Supabase PostgreSQL with pgvector embeddings.
 
 **Deduplication:** SHA-256 hash of `(source_url + body[:200])` stored in `reviews.body_hash` (unique index). Skip on conflict.
 
@@ -159,43 +157,46 @@ class RawReview(BaseModel):
 ```python
 # models/project.py
 class Project(Base):
-    id: str (UUID, PK)
-    source_url: str | None
-    platform: str
-    product_name: str | None
-    status: str  # pending|scraping|ingesting|analyzing|summarizing|ready|error
-    error_message: str | None
-    review_count: int = 0
-    created_at: datetime
-    completed_at: datetime | None
+    id: Mapped[str]           # UUID, PK
+    source_url: Mapped[str | None]
+    platform: Mapped[str]
+    product_name: Mapped[str | None]
+    status: Mapped[str]       # pending|scraping|ingesting|analyzing|summarizing|ready|error
+    error_message: Mapped[str | None]
+    review_count: Mapped[int] = 0
+    created_at: Mapped[datetime]
+    completed_at: Mapped[datetime | None]
 
 # models/review.py
+from pgvector.sqlalchemy import Vector
+
 class Review(Base):
-    id: str (UUID, PK)
-    project_id: str (FK → projects.id)
-    platform: str
-    external_id: str | None
-    reviewer_name: str | None
-    rating: float | None
-    title: str | None
-    body: str
-    body_hash: str (unique index)
-    date: datetime | None
-    helpful_count: int = 0
-    verified: bool = False
-    sentiment: str | None  # populated by Analyzer
-    created_at: datetime
+    id: Mapped[str]           # UUID, PK
+    project_id: Mapped[str]   # FK → projects.id
+    platform: Mapped[str]
+    external_id: Mapped[str | None]
+    reviewer_name: Mapped[str | None]
+    rating: Mapped[float | None]
+    title: Mapped[str | None]
+    body: Mapped[str]
+    body_hash: Mapped[str]    # unique index
+    date: Mapped[datetime | None]
+    helpful_count: Mapped[int] = 0
+    verified: Mapped[bool] = False
+    sentiment: Mapped[str | None]     # populated by Analyzer
+    embedding: Mapped[list[float]] = mapped_column(Vector(384), nullable=True)
+    created_at: Mapped[datetime]
 ```
 
-**ChromaDB:**
-- Collection name: `reviews_{project_id}`
-- `documents` = review body text; `metadatas` = `{review_id, rating, date, platform}`
-- Batch embed in chunks of 64 using `SentenceTransformer("all-MiniLM-L6-v2")`
+**Embedding strategy:**
+- Compute embeddings in batches of 64 using `SentenceTransformer("all-MiniLM-L6-v2")`
+- Store as `vector(384)` directly on each `Review` row — no separate vector store
 - Embedder loaded once at app startup (lifespan), shared singleton
+- Run `CREATE EXTENSION IF NOT EXISTS vector;` in Alembic migration 0001
 
 **Output:** `IngestionResult(total, inserted, skipped_duplicates)`
 
-**Libraries:** `sqlalchemy[asyncio]`, `aiosqlite`, `chromadb`, `sentence-transformers`
+**Libraries:** `sqlalchemy[asyncio]`, `asyncpg`, `pgvector`, `sentence-transformers`
 
 ---
 
@@ -218,21 +219,21 @@ class Review(Base):
 **Analysis ORM model:**
 ```python
 class Analysis(Base):
-    id: str (UUID, PK)
-    project_id: str (FK, unique)
-    sentiment_distribution: str  # JSON
-    rating_distribution: str     # JSON
-    themes: str                  # JSON list[ThemeCluster] (without labels yet)
-    trend_data: str              # JSON
-    top_positive_reviews: str    # JSON list[review_id]
-    top_negative_reviews: str    # JSON list[review_id]
+    id: Mapped[str]           # UUID, PK
+    project_id: Mapped[str]   # FK, unique
+    sentiment_distribution: Mapped[str]  # JSON
+    rating_distribution: Mapped[str]     # JSON
+    themes: Mapped[str]                  # JSON list[ThemeCluster] (without labels yet)
+    trend_data: Mapped[str]              # JSON
+    top_positive_reviews: Mapped[str]    # JSON list[review_id]
+    top_negative_reviews: Mapped[str]    # JSON list[review_id]
     # Populated by Summarizer:
-    executive_summary: str | None
-    pain_points: str | None      # JSON
-    highlights: str | None       # JSON
-    recommendations: str | None  # JSON
-    theme_labels: str | None     # JSON dict[cluster_index → label]
-    created_at: datetime
+    executive_summary: Mapped[str | None]
+    pain_points: Mapped[str | None]      # JSON
+    highlights: Mapped[str | None]       # JSON
+    recommendations: Mapped[str | None]  # JSON
+    theme_labels: Mapped[str | None]     # JSON dict[cluster_index → label]
+    created_at: Mapped[datetime]
 ```
 
 **Libraries:** `scikit-learn`, `vaderSentiment`, `pandas`, `numpy`
@@ -284,10 +285,10 @@ User question
       ▼
 [Layer 1: Pre-filter — regex + similarity check]
   └─ Off-topic patterns (competitor names, general knowledge phrases)
-  └─ ChromaDB similarity score < 0.25 threshold → REJECT
+  └─ pgvector similarity score < 0.25 threshold → REJECT
       │
       ▼
-[ChromaDB retrieval: top-8 chunks by cosine similarity]
+[pgvector retrieval: top-8 reviews by cosine similarity]
       │
       ▼
 [Layer 2: System prompt enforcement]
@@ -334,14 +335,22 @@ PROJECT CONTEXT:
 - Date range: {date_range}
 ```
 
-**RAG retrieval:**
+**pgvector RAG retrieval (`rag_agent.py`):**
 ```python
-results = collection.query(
-    query_embeddings=[question_embedding],
-    n_results=8,
-    include=["documents", "metadatas", "distances"]
+# Cosine similarity search via pgvector
+query_embedding = embedder.encode([question])[0].tolist()
+results = await db.execute(
+    text("""
+        SELECT id, body, reviewer_name, rating, date,
+               1 - (embedding <=> :qemb) AS similarity
+        FROM reviews
+        WHERE project_id = :pid
+          AND 1 - (embedding <=> :qemb) >= :threshold
+        ORDER BY embedding <=> :qemb
+        LIMIT 8
+    """),
+    {"qemb": str(query_embedding), "pid": project_id, "threshold": 0.20}
 )
-# Filter: cosine similarity = 1 - distance >= 0.20
 ```
 
 **Chat history:** Last 6 turns (3 user + 3 assistant) in server-side dict keyed by `session_id` (UUID from frontend localStorage). Ephemeral, no persistence.
@@ -385,7 +394,7 @@ event: complete
 data: {"project_id": "abc123", "review_count": 87}
 
 event: error
-data: {"stage": "scraping", "message": "403 Forbidden — G2 blocked the request"}
+data: {"stage": "scraping", "message": "403 Forbidden — Trustpilot blocked the request"}
 ```
 
 ### `/api/chat`
@@ -432,10 +441,17 @@ SSE endpoint holds per-project queues in a module-level dict, drains with `async
 
 **Backend (`.env`):**
 ```bash
+# Supabase
+DATABASE_URL=postgresql+asyncpg://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+SUPABASE_URL=https://[ref].supabase.co
+SUPABASE_ANON_KEY=eyJ...
+
+# AI
 ANTHROPIC_API_KEY=sk-ant-...
 CLAUDE_MODEL=claude-haiku-4-5
+
+# App
 ENV=production
-DATA_DIR=/app/data
 SCRAPER_MAX_PAGES=10
 SCRAPER_CONCURRENCY=3
 USE_SIMPLE_SENTIMENT=true
@@ -454,17 +470,18 @@ NEXT_PUBLIC_API_URL=https://reviewlens-api.onrender.com
 
 ## Deployment
 
-- **Backend → Render free tier:** Docker container, persistent 1GB disk at `/app/data` (SQLite + ChromaDB survive restarts). Alembic migration runs automatically on startup. Sentence-transformers model pre-downloaded in `Dockerfile` `RUN` step.
+- **Database → Supabase free tier:** Hosted PostgreSQL with pgvector extension. 500MB storage, no ops required. Enable `vector` extension in Supabase dashboard under Database → Extensions.
+- **Backend → Render free tier:** Docker container. No persistent disk needed — all data lives in Supabase. Alembic migration runs automatically on startup (`alembic upgrade head` in lifespan). Sentence-transformers model pre-downloaded in `Dockerfile` `RUN` step.
 - **Frontend → Vercel free tier:** Zero-config Next.js deploy from GitHub.
 - **CI → GitHub Actions:** `pytest` + `eslint/tsc` + `next build` on push to `main`.
 
-**`render.yaml`** uses `disk.mountPath: /app/data` to attach persistent storage.
+**`render.yaml`** — no `disk` block required (Supabase handles persistence).
 
 ---
 
 ## Key Libraries
 
-**Backend:** `fastapi`, `uvicorn`, `pydantic-settings`, `sqlalchemy[asyncio]`, `aiosqlite`, `alembic`, `httpx[http2]`, `beautifulsoup4`, `lxml`, `pandas`, `scikit-learn`, `vaderSentiment`, `sentence-transformers`, `chromadb`, `anthropic`, `tenacity`, `python-multipart`
+**Backend:** `fastapi`, `uvicorn`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `pgvector`, `alembic`, `httpx[http2]`, `beautifulsoup4`, `lxml`, `pandas`, `scikit-learn`, `vaderSentiment`, `sentence-transformers`, `anthropic`, `tenacity`, `python-multipart`
 
 **Frontend:** `next@14`, `react@18`, `recharts`, `tailwindcss`, `@radix-ui/*` (shadcn/ui), `clsx`, `tailwind-merge`
 
@@ -472,13 +489,13 @@ NEXT_PUBLIC_API_URL=https://reviewlens-api.onrender.com
 
 ## Implementation Sequence
 
-1. **Foundation:** repo init, `pyproject.toml`, SQLAlchemy models, Alembic migration, FastAPI app factory, Next.js scaffold
+1. **Foundation:** repo init, `pyproject.toml`, SQLAlchemy models, Alembic migration (with `CREATE EXTENSION vector`), FastAPI app factory, Next.js scaffold
 2. **Scraper:** Trustpilot `__NEXT_DATA__` scraping + CSV parser
-3. **Ingester:** normalize, dedupe, SQLite persistence, ChromaDB embedding
+3. **Ingester:** normalize, dedupe, Supabase PostgreSQL persistence, pgvector embedding column
 4. **Analyzer:** VADER sentiment, TF-IDF/KMeans themes, trend data
 5. **Summarizer:** Claude tool-use API call, structured output
 6. **Orchestrator + API:** sequential pipeline, SSE streaming, all 3 routers
-7. **Agent + Guardrails:** RAG retrieval, three-layer guardrail, chat endpoint
+7. **Agent + Guardrails:** pgvector RAG retrieval, three-layer guardrail, chat endpoint
 8. **Frontend:** landing page, pipeline progress, project dashboard (4 tabs), chat panel
 9. **Deployment:** Dockerfile, render.yaml, vercel.json, GitHub Actions CI
 10. **Polish:** README, `/ai-transcripts` dir, health check, cold-start spinner
@@ -492,6 +509,7 @@ NEXT_PUBLIC_API_URL=https://reviewlens-api.onrender.com
 | Trustpilot `__NEXT_DATA__` schema changes | JSON-LD fallback path; both parsed on every request |
 | Render cold start (~30s) | `/api/health` ping on frontend load; "Waking up..." spinner |
 | Sentence-transformers cold start | Pre-download model in `Dockerfile` `RUN` step |
-| ChromaDB data loss | Render persistent disk at `/app/data` |
+| Supabase free tier auto-pause (1 week inactivity) | Keep-alive ping via Render cron or GitHub Actions scheduled workflow |
+| Supabase 500MB storage limit | 200 reviews × ~2KB avg = ~0.4MB per project; well within limit |
 | Claude API rate limits | `tenacity` retry; use haiku model by default |
 | Trustpilot Cloudflare 403 | Chrome User-Agent + Accept-Language header; polite delays; CSV fallback always available |
