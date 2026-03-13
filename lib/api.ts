@@ -1,72 +1,113 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// All API calls now use Next.js API routes (no external backend needed)
 
-export async function createProject(data: {
-  source_url?: string;
-  platform: string;
-}): Promise<{ id: string }> {
-  const res = await fetch(`${API_BASE}/api/projects`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+export async function ingestReviews(data: {
+  url?: string;
+  csvData?: string;
+  productName?: string;
+}): Promise<{ projectId: string; productName: string; reviewCount: number; platform: string }> {
+  const res = await fetch('/api/ingest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Failed to ingest reviews');
+  }
   return res.json();
 }
 
 export async function getProject(id: string) {
-  const res = await fetch(`${API_BASE}/api/projects/${id}`);
-  if (!res.ok) throw new Error(await res.text());
+  const res = await fetch(`/api/projects/${id}`);
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Failed to fetch project');
+  }
   return res.json();
 }
 
 export async function getProjectReviews(
   id: string,
   params: {
-    page?: number;
     limit?: number;
+    offset?: number;
     sentiment?: string;
-    rating_min?: number;
+    rating?: number;
   } = {}
 ) {
   const qs = new URLSearchParams();
-  if (params.page) qs.set("page", String(params.page));
-  if (params.limit) qs.set("limit", String(params.limit));
-  if (params.sentiment) qs.set("sentiment", params.sentiment);
-  if (params.rating_min) qs.set("rating_min", String(params.rating_min));
-  const res = await fetch(`${API_BASE}/api/projects/${id}/reviews?${qs}`);
-  if (!res.ok) throw new Error(await res.text());
+  if (params.limit) qs.set('limit', String(params.limit));
+  if (params.offset) qs.set('offset', String(params.offset));
+  if (params.sentiment) qs.set('sentiment', params.sentiment);
+  if (params.rating) qs.set('rating', String(params.rating));
+  
+  const res = await fetch(`/api/projects/${id}/reviews?${qs}`);
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Failed to fetch reviews');
+  }
   return res.json();
 }
 
-export async function getProjectAnalysis(id: string) {
-  const res = await fetch(`${API_BASE}/api/projects/${id}/analysis`);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
-}
-
-export async function runPipeline(formData: FormData): Promise<{ project_id: string }> {
-  const res = await fetch(`${API_BASE}/api/pipeline/run`, {
-    method: "POST",
-    body: formData,
+export async function runAnalysis(projectId: string) {
+  const res = await fetch(`/api/analyze/${projectId}`, {
+    method: 'POST',
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Failed to run analysis');
+  }
   return res.json();
 }
 
 export async function sendChat(data: {
-  project_id: string;
-  session_id: string;
+  projectId: string;
+  sessionId?: string;
   message: string;
 }) {
-  const res = await fetch(`${API_BASE}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Failed to send message');
+  }
   return res.json();
 }
 
-export function getPipelineSSEUrl(projectId: string): string {
-  return `${API_BASE}/api/pipeline/stream/${projectId}`;
+// Legacy functions for backwards compatibility
+export async function createProject(data: {
+  source_url?: string;
+  platform: string;
+}): Promise<{ id: string }> {
+  const result = await ingestReviews({ url: data.source_url });
+  return { id: result.projectId };
+}
+
+export async function runPipeline(formData: FormData): Promise<{ project_id: string }> {
+  const url = formData.get('url') as string | null;
+  const file = formData.get('file') as File | null;
+  const productName = formData.get('product_name') as string | null;
+
+  let csvData: string | undefined;
+  if (file) {
+    csvData = await file.text();
+  }
+
+  const result = await ingestReviews({
+    url: url || undefined,
+    csvData,
+    productName: productName || undefined,
+  });
+
+  // Also run analysis after ingestion
+  await runAnalysis(result.projectId);
+
+  return { project_id: result.projectId };
+}
+
+export function getProjectAnalysis(id: string) {
+  return runAnalysis(id);
 }
