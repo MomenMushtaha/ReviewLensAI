@@ -5,9 +5,10 @@ import Link from "next/link";
 import { Navigation } from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
+import { deleteProject } from "@/lib/api";
 import { 
   Plus, BarChart3, MessageSquare, TrendingUp, FileText, 
-  ArrowRight, Sparkles, Globe, Upload
+  ArrowRight, Sparkles, Globe, Upload, Trash2, X
 } from "lucide-react";
 
 interface RecentProject {
@@ -26,6 +27,8 @@ export default function DashboardPage() {
     avgRating: 0,
     themesFound: 0,
   });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     try {
@@ -41,6 +44,38 @@ export default function DashboardPage() {
       });
     } catch {}
   }, []);
+
+  const handleDeleteProject = async () => {
+    if (!deleteConfirm) return;
+    
+    setIsDeleting(true);
+    try {
+      await deleteProject(deleteConfirm.id);
+      
+      // Remove from local state
+      const updated = projects.filter(p => p.id !== deleteConfirm.id);
+      setProjects(updated);
+      
+      // Update localStorage
+      localStorage.setItem("recent_analyses", JSON.stringify(updated));
+      
+      // Update stats
+      const totalReviews = updated.reduce((acc: number, p: RecentProject) => acc + (p.review_count || 0), 0);
+      setStats({
+        totalProjects: updated.length,
+        totalReviews,
+        avgRating: updated.length > 0 ? 3.8 : 0,
+        themesFound: updated.length * 4,
+      });
+      
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      alert('Failed to delete project');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const hasProjects = projects.length > 0;
 
@@ -144,12 +179,14 @@ export default function DashboardPage() {
             ) : (
               <div className="divide-y divide-[hsl(var(--border))]">
                 {projects.slice(0, 5).map((project) => (
-                  <Link
+                  <div
                     key={project.id}
-                    href={`/summary?projectId=${project.id}`}
                     className="flex items-center justify-between px-6 py-4 hover:bg-[hsl(var(--secondary)/0.5)] transition-colors group"
                   >
-                    <div className="flex items-center gap-4">
+                    <Link
+                      href={`/summary?projectId=${project.id}`}
+                      className="flex items-center gap-4 flex-1"
+                    >
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--info))] flex items-center justify-center">
                         <span className="text-sm font-bold text-white">
                           {(project.product_name || "U")[0].toUpperCase()}
@@ -163,9 +200,16 @@ export default function DashboardPage() {
                           {project.review_count} reviews · {formatDate(project.created_at)}
                         </p>
                       </div>
-                    </div>
-                    <ArrowRight className="h-4 w-4 text-[hsl(var(--muted-foreground))] opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                  </Link>
+                      <ArrowRight className="h-4 w-4 text-[hsl(var(--muted-foreground))] opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                    </Link>
+                    <button
+                      onClick={() => setDeleteConfirm({ id: project.id, name: project.product_name || "Untitled Analysis" })}
+                      className="ml-2 p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.1)] transition-colors opacity-0 group-hover:opacity-100"
+                      title="Delete project"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -238,6 +282,48 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-lg shadow-lg max-w-sm mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-[hsl(var(--border))]">
+              <h2 className="text-lg font-semibold text-[hsl(var(--foreground))]">Delete Analysis</h2>
+            </div>
+            <div className="px-6 py-4">
+              <p className="text-[hsl(var(--muted-foreground))]">
+                Are you sure you want to delete <span className="font-medium text-[hsl(var(--foreground))]">{deleteConfirm.name}</span>? This action cannot be undone and will remove all associated reviews and analysis data.
+              </p>
+            </div>
+            <div className="px-6 py-4 border-t border-[hsl(var(--border))] flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg text-[hsl(var(--foreground))] bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--secondary-hover))] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteProject}
+                disabled={isDeleting}
+                className="px-4 py-2 rounded-lg text-white bg-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/0.9)] transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

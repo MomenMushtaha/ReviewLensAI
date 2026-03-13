@@ -56,3 +56,49 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = createClient();
+
+    // Delete all reviews for this project first (cascade constraint)
+    const { error: reviewsError } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('project_id', id);
+
+    if (reviewsError) {
+      console.error('Error deleting reviews:', reviewsError);
+      return NextResponse.json(
+        { error: 'Failed to delete project reviews' },
+        { status: 500 }
+      );
+    }
+
+    // Delete the project
+    const { error: projectError } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', id);
+
+    if (projectError) {
+      console.error('Error deleting project:', projectError);
+      return NextResponse.json(
+        { error: 'Failed to delete project' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, message: 'Project deleted' });
+  } catch (error) {
+    console.error('Project delete error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Failed to delete project' },
+      { status: 500 }
+    );
+  }
+}

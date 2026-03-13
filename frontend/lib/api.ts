@@ -66,6 +66,17 @@ export async function runAnalysis(projectId: string) {
   return res.json();
 }
 
+export async function deleteProject(id: string) {
+  const res = await fetch(`/api/projects/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Failed to delete project');
+  }
+  return res.json();
+}
+
 export async function sendChat(data: {
   projectId: string;
   sessionId?: string;
