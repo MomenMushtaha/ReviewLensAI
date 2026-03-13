@@ -7,6 +7,13 @@ const openai = new OpenAI({
 export const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 export default openai;
+export { openai };
+
+// Truncate text utility
+export function truncate(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength - 3) + '...';
+}
 
 // Generate embeddings for text
 export async function getEmbedding(text: string): Promise<number[]> {
@@ -19,7 +26,7 @@ export async function getEmbedding(text: string): Promise<number[]> {
 }
 
 // Tool definition for structured summary output
-export const SUMMARY_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+export const SUMMARIZER_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   type: "function",
   function: {
     name: "produce_summary",
@@ -79,7 +86,7 @@ export async function generateSummary(
   const response = await openai.chat.completions.create({
     model: OPENAI_MODEL,
     max_tokens: 1500,
-    tools: [SUMMARY_TOOL],
+    tools: [SUMMARIZER_TOOL],
     tool_choice: { type: "function", function: { name: "produce_summary" } },
     messages: [
       {
