@@ -3,14 +3,15 @@ import { cn } from "@/lib/utils";
 import { type ButtonHTMLAttributes, forwardRef } from "react";
 
 const variants = {
-  default: "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50",
-  outline: "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50",
-  ghost: "text-gray-600 hover:bg-gray-100 disabled:opacity-50",
-  destructive: "bg-red-600 text-white hover:bg-red-700 disabled:opacity-50",
+  default: "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50",
+  secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50",
+  outline: "border border-border bg-transparent text-foreground hover:bg-secondary disabled:opacity-50",
+  ghost: "text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50",
+  destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50",
 };
 
 const sizes = {
-  sm: "h-7 px-3 text-xs",
+  sm: "h-8 px-3 text-xs",
   md: "h-9 px-4 text-sm",
   lg: "h-11 px-6 text-base",
 };
@@ -27,7 +28,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         variants[variant],
         sizes[size],
         className
