@@ -1,6 +1,6 @@
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-import anthropic
+from openai import OpenAI
 
 from app.config import settings
 from app.database import get_embedder
@@ -8,7 +8,7 @@ from app.models.project import Project
 from app.agents.guardrails import pre_filter, post_validate, SAFE_FALLBACK
 from app.agents.prompts import AGENT_SYSTEM_PROMPT
 
-_client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+_client = OpenAI(api_key=settings.openai_api_key)
 
 
 async def _retrieve_chunks(question: str, project_id: str, db: AsyncSession) -> list[dict]:
@@ -82,7 +82,7 @@ async def answer(
             "guardrail_category": guard.category,
         }
 
-    # ── Layer 2: Build system prompt + call Claude ───────────────────────────
+    # ── Layer 2: Build system prompt + call OpenAI ───────────────────────────
     system_prompt = AGENT_SYSTEM_PROMPT.format(
         product_name=project.product_name or "Unknown",
         review_count=project.review_count,
@@ -91,15 +91,16 @@ async def answer(
         retrieved_chunks=_format_chunks(chunks),
     )
 
-    messages = history + [{"role": "user", "content": question}]
+    messages = [{"role": "system", "content": system_prompt}]
+    messages += history
+    messages.append({"role": "user", "content": question})
 
-    response = _client.messages.create(
-        model=settings.claude_model,
+    response = _client.chat.completions.create(
+        model=settings.openai_model,
         max_tokens=800,
-        system=system_prompt,
         messages=messages,
     )
-    reply = response.content[0].text if response.content else SAFE_FALLBACK
+    reply = response.choices[0].message.content or SAFE_FALLBACK
 
     # ── Layer 3: Post-validate ───────────────────────────────────────────────
     chunk_bodies = [c["body"] for c in chunks]
