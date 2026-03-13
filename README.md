@@ -2,7 +2,7 @@
 
 **Review Intelligence Portal** — Scrape Trustpilot reviews, analyze them with AI, and ask questions about them through a guardrailed chat interface.
 
-> **Development Note (March 2026)**: Frontend development transitioned to Vercel v0. Codex on standby.
+> **Development Note (March 2026)**: Vercel v0 is now leading development. Codex is reserved for stubborn bugs.
 
 ## Architecture
 
