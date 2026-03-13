@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase';
 import { scrapeTrustpilot, parseCSV, hashReviewBody, ScraperError } from '@/lib/pipeline/scraper';
-import { getEmbedding } from '@/lib/openai';
-import { analyze } from '@/lib/pipeline/analyzer';
-import { summarize } from '@/lib/pipeline/summarizer';
+import { getBatchEmbeddings } from '@/lib/openai';
 
-export const maxDuration = 60; // 60 seconds for scraping
+export const maxDuration = 300; // 5 minutes for scraping + embeddings
 
 export async function POST(request: NextRequest) {
   console.log('[v0] POST /api/ingest called');
@@ -97,29 +95,35 @@ export async function POST(request: NextRequest) {
       project = newProject;
     }
 
-    // Step 3: Insert reviews with deduplication
-    const reviewsToInsert = [];
+    // Step 3: Deduplicate reviews first
+    const uniqueReviews = [];
     const seenHashes = new Set<string>();
 
     for (const review of reviews) {
       const bodyHash = hashReviewBody(review.body);
       if (seenHashes.has(bodyHash)) continue;
       seenHashes.add(bodyHash);
-
-      // Get embedding for the review
-      const embedding = await getEmbedding(review.body);
-
-      reviewsToInsert.push({
-        project_id: project.id,
-        body: review.body,
-        title: review.title,
-        rating: review.rating,
-        author: review.reviewerName,
-        created_date: review.date?.toISOString(),
-        body_hash: bodyHash,
-        embedding,
-      });
+      uniqueReviews.push({ ...review, bodyHash });
     }
+
+    console.log('[v0] Getting batch embeddings for', uniqueReviews.length, 'reviews...');
+    
+    // Get all embeddings in batch (much faster than one-by-one)
+    const embeddings = await getBatchEmbeddings(uniqueReviews.map(r => r.body));
+    
+    console.log('[v0] Got', embeddings.length, 'embeddings');
+
+    // Prepare reviews with embeddings
+    const reviewsToInsert = uniqueReviews.map((review, i) => ({
+      project_id: project.id,
+      body: review.body,
+      title: review.title,
+      rating: review.rating,
+      author: review.reviewerName,
+      created_date: review.date?.toISOString(),
+      body_hash: review.bodyHash,
+      embedding: embeddings[i] || null,
+    }));
 
     // Insert reviews one by one, skipping duplicates
     let insertedCount = 0;

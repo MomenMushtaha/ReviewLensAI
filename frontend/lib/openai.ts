@@ -25,6 +25,29 @@ export async function getEmbedding(text: string): Promise<number[]> {
   return response.data[0].embedding;
 }
 
+// Batch generate embeddings for multiple texts
+export async function getBatchEmbeddings(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return [];
+  
+  // OpenAI allows up to 2048 inputs per batch, but limit to 100 for safety
+  const batchSize = 100;
+  const allEmbeddings: number[][] = [];
+  
+  for (let i = 0; i < texts.length; i += batchSize) {
+    const batch = texts.slice(i, i + batchSize).map(t => t.slice(0, 8000));
+    const response = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: batch,
+      dimensions: 384,
+    });
+    // Sort by index to maintain order
+    const sorted = response.data.sort((a, b) => a.index - b.index);
+    allEmbeddings.push(...sorted.map(d => d.embedding));
+  }
+  
+  return allEmbeddings;
+}
+
 // Tool definition for structured summary output
 export const SUMMARIZER_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
   type: "function",
