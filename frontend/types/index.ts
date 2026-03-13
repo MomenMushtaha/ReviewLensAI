@@ -34,8 +34,12 @@ export interface Theme {
   keywords: string[];
   review_count: number;
   avg_sentiment: number;
+  avg_rating?: number;
   sample_reviews: string[];
 }
+
+// Alias for backwards compatibility
+export type ThemeCluster = Theme;
 
 export interface Analysis {
   executive_summary?: string;
