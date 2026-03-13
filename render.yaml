@@ -6,12 +6,12 @@ services:
     dockerContext: ./backend
     plan: free
     envVars:
-      - key: ANTHROPIC_API_KEY
+      - key: OPENAI_API_KEY
         sync: false
       - key: DATABASE_URL
         sync: false
-      - key: CLAUDE_MODEL
-        value: claude-haiku-4-5
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
       - key: ENV
         value: production
       - key: SCRAPER_MAX_PAGES
