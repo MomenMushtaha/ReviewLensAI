@@ -58,3 +58,21 @@ export interface ChatMessage {
   guardrail_triggered?: boolean;
   guardrail_category?: string;
 }
+
+export interface PainPoint {
+  title: string;
+  description: string;
+  frequency: string;
+}
+
+export interface Highlight {
+  title: string;
+  description: string;
+  frequency: string;
+}
+
+export interface Recommendation {
+  priority: "high" | "medium" | "low";
+  action: string;
+  rationale: string;
+}
