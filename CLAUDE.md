@@ -9,14 +9,15 @@ Review Intelligence Portal for the project. Pipeline: Scraper → Ingester → A
 
 ### Cost
 - **Zero financial cost.** Use free tiers only. Never introduce a paid service, API, or dependency.
-- Free-tier services in use: Render (backend), Vercel (frontend), Anthropic API (haiku model).
+- Free-tier services in use: Render (backend), Vercel (frontend), Supabase (database), Anthropic API (haiku model).
 
 ### Auth
 - **No user authentication.** The app must be directly accessible via URL with no login.
 
 ### Deployment targets
-- Backend → Render free tier (Docker, persistent disk at `/app/data`)
+- Backend → Render free tier (Docker, **no persistent disk** — DB is external)
 - Frontend → Vercel free tier (Next.js zero-config)
+- Database → Supabase free tier (PostgreSQL + pgvector)
 
 ---
 
@@ -26,8 +27,8 @@ Review Intelligence Portal for the project. Pipeline: Scraper → Ingester → A
 |---|---|
 | Backend | Python 3.11 + FastAPI |
 | Frontend | Next.js 14 (App Router) |
-| Database | SQLite via SQLAlchemy + aiosqlite |
-| Vector store | ChromaDB (persistent, local at `data/chroma/`) |
+| Database | Supabase PostgreSQL via SQLAlchemy + asyncpg |
+| Vector store | pgvector (Supabase built-in extension) — `vector(384)` column on `reviews` table |
 | Embeddings | `sentence-transformers` — model `all-MiniLM-L6-v2` |
 | AI model | `claude-haiku-4-5` (default); `claude-sonnet-4-6` via `CLAUDE_MODEL` env |
 | HTTP client | `httpx[http2]` |
@@ -67,7 +68,7 @@ Review Intelligence Portal for the project. Pipeline: Scraper → Ingester → A
 
 The chat agent must enforce three layers — do not simplify to fewer:
 
-1. **Pre-filter:** Regex check for off-topic patterns + ChromaDB similarity threshold (`SIMILARITY_THRESHOLD=0.20`). Reject before calling Claude if triggered.
+1. **Pre-filter:** Regex check for off-topic patterns + pgvector similarity threshold (`SIMILARITY_THRESHOLD=0.20`). Reject before calling Claude if triggered.
 2. **System prompt enforcement:** Scope-locked system prompt injected with retrieved review context, product name, platform, and date range. Claude must explicitly decline out-of-scope questions.
 3. **Post-response validator:** Scan Claude's output for hallucination markers (`"generally speaking"`, `"typically"`, external URLs). Replace with safe fallback if triggered.
 
@@ -77,12 +78,13 @@ All rejections must return `guardrail_triggered: true` and a `guardrail_category
 
 ## Data / Storage Rules
 
-- SQLite file lives at `{DATA_DIR}/reviews.db` (env: `DATA_DIR=/app/data`).
-- ChromaDB persistent client points to `{DATA_DIR}/chroma/`.
-- The `data/` directory is **gitignored** (except `.gitkeep`). Never commit database files.
-- Alembic migration runs automatically on FastAPI startup (`alembic upgrade head` in lifespan).
-- One ChromaDB collection per project: `reviews_{project_id}`.
+- All data lives in **Supabase PostgreSQL**. No local database files. No `DATA_DIR` env var.
+- Connection string via `DATABASE_URL` env var (format: `postgresql+asyncpg://...`).
+- Alembic migration 0001 must run `CREATE EXTENSION IF NOT EXISTS vector;` before creating tables.
+- Alembic runs automatically on FastAPI startup (`alembic upgrade head` in lifespan).
+- Embeddings stored as `vector(384)` column directly on the `reviews` table — no separate vector store.
 - Deduplication via SHA-256 hash of `(source_url + body[:200])` — skip on conflict, never raise.
+- Never commit `.env` files or expose `DATABASE_URL`, `SUPABASE_URL`, or `SUPABASE_ANON_KEY`.
 
 ---
 
@@ -114,6 +116,8 @@ All rejections must return `guardrail_triggered: true` and a `guardrail_category
 - Do not use a transformer-based sentiment model — VADER only.
 - Do not call Claude with free-form text and expect JSON back — always use tool use for structured output.
 - Do not use CSS selectors to scrape Trustpilot — use `__NEXT_DATA__` JSON.
+- Do not use SQLite, ChromaDB, or `aiosqlite` — the project has migrated to Supabase + pgvector.
+- Do not add a persistent disk to the Render config — all persistence is handled by Supabase.
 - Do not hardcode API keys or secrets anywhere in code.
 - Do not introduce any paid service or dependency.
 - Do not use `git add -A` or `git add .` — stage files explicitly.
