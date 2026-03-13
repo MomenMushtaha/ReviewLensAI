@@ -42,9 +42,9 @@ export interface Analysis {
   sentiment_distribution: Record<string, number>;
   trend_data: Array<{ date: string; avgRating: number; count: number }>;
   themes: Theme[];
-  pain_points: string[];
-  highlights: string[];
-  recommendations: string[];
+  pain_points: (PainPoint | string)[];
+  highlights: (Highlight | string)[];
+  recommendations: (Recommendation | string)[];
 }
 
 export interface ChatMessage {
