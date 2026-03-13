@@ -8,8 +8,10 @@ import { summarize } from '@/lib/pipeline/summarizer';
 export const maxDuration = 60; // 60 seconds for scraping
 
 export async function POST(request: NextRequest) {
+  console.log('[v0] POST /api/ingest called');
   try {
     const body = await request.json();
+    console.log('[v0] Request body:', { url: body.url, hasCsvData: !!body.csvData, productName: body.productName });
     const { url, csvData, productName: providedName } = body;
 
     if (!url && !csvData) {
@@ -28,13 +30,16 @@ export async function POST(request: NextRequest) {
     let trustpilotUrl = null;
 
     if (url) {
+      console.log('[v0] Scraping Trustpilot URL:', url);
       try {
         const result = await scrapeTrustpilot(url);
+        console.log('[v0] Scrape result:', { reviewCount: result.reviews.length, productName: result.productName });
         reviews = result.reviews;
         productName = productName || result.productName || 'Unknown Product';
         platform = 'trustpilot';
         trustpilotUrl = url;
       } catch (e) {
+        console.log('[v0] Scrape error:', e);
         if (e instanceof ScraperError) {
           return NextResponse.json({ error: e.message }, { status: 400 });
         }
@@ -53,6 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Create project
+    console.log('[v0] Creating project in Supabase...');
     const { data: project, error: projectError } = await supabase
       .from('projects')
       .insert({
@@ -65,6 +71,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (projectError) {
+      console.log('[v0] Project creation error:', projectError);
       return NextResponse.json(
         { error: `Failed to create project: ${projectError.message}` },
         { status: 500 }
@@ -115,6 +122,7 @@ export async function POST(request: NextRequest) {
       .update({ total_reviews: reviewsToInsert.length })
       .eq('id', project.id);
 
+    console.log('[v0] Ingest complete, returning response');
     return NextResponse.json({
       projectId: project.id,
       productName,
@@ -122,7 +130,7 @@ export async function POST(request: NextRequest) {
       platform,
     });
   } catch (error) {
-    console.error('Ingest error:', error);
+    console.error('[v0] Ingest error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
