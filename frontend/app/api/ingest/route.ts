@@ -57,25 +57,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 2: Create project
+    // Step 2: Check if project with same URL exists, or create new one
     console.log('[v0] Creating project in Supabase...');
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .insert({
-        product_name: productName,
-        platform,
-        trustpilot_url: trustpilotUrl,
-        total_reviews: reviews.length,
-      })
-      .select()
-      .single();
+    let project;
+    
+    if (trustpilotUrl) {
+      // Check for existing project with same URL
+      const { data: existingProject } = await supabase
+        .from('projects')
+        .select()
+        .eq('trustpilot_url', trustpilotUrl)
+        .single();
+      
+      if (existingProject) {
+        console.log('[v0] Found existing project, reusing:', existingProject.id);
+        project = existingProject;
+      }
+    }
+    
+    if (!project) {
+      const { data: newProject, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          product_name: productName,
+          platform,
+          trustpilot_url: trustpilotUrl,
+          total_reviews: reviews.length,
+        })
+        .select()
+        .single();
 
-    if (projectError) {
-      console.log('[v0] Project creation error:', projectError);
-      return NextResponse.json(
-        { error: `Failed to create project: ${projectError.message}` },
-        { status: 500 }
-      );
+      if (projectError) {
+        console.log('[v0] Project creation error:', projectError);
+        return NextResponse.json(
+          { error: `Failed to create project: ${projectError.message}` },
+          { status: 500 }
+        );
+      }
+      project = newProject;
     }
 
     // Step 3: Insert reviews with deduplication
@@ -102,31 +121,44 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Insert in batches
-    const batchSize = 100;
-    for (let i = 0; i < reviewsToInsert.length; i += batchSize) {
-      const batch = reviewsToInsert.slice(i, i + batchSize);
+    // Insert reviews one by one, skipping duplicates
+    let insertedCount = 0;
+    for (const review of reviewsToInsert) {
       const { error: insertError } = await supabase
         .from('reviews')
-        .insert(batch);
+        .insert(review);
 
       if (insertError) {
-        console.error('Error inserting reviews:', insertError);
-        // Continue with partial insert
+        // Skip duplicates (code 23505 is unique violation)
+        if (insertError.code === '23505') {
+          console.log('[v0] Skipping duplicate review');
+          continue;
+        }
+        console.error('Error inserting review:', insertError);
+      } else {
+        insertedCount++;
       }
     }
+    
+    console.log('[v0] Inserted', insertedCount, 'new reviews out of', reviewsToInsert.length, 'total');
 
+    // Get total review count for this project
+    const { count: totalReviews } = await supabase
+      .from('reviews')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', project.id);
+    
     // Update project with actual count
     await supabase
       .from('projects')
-      .update({ total_reviews: reviewsToInsert.length })
+      .update({ total_reviews: totalReviews || 0 })
       .eq('id', project.id);
 
     console.log('[v0] Ingest complete, returning response');
     return NextResponse.json({
       projectId: project.id,
-      productName,
-      reviewCount: reviewsToInsert.length,
+      productName: project.product_name || productName,
+      reviewCount: totalReviews || 0,
       platform,
     });
   } catch (error) {

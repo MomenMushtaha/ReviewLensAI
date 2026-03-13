@@ -3,16 +3,17 @@ import { cn } from "@/lib/utils";
 import { type ButtonHTMLAttributes, forwardRef } from "react";
 
 const variants = {
-  default: "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50",
-  outline: "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50",
-  ghost: "text-gray-600 hover:bg-gray-100 disabled:opacity-50",
-  destructive: "bg-red-600 text-white hover:bg-red-700 disabled:opacity-50",
+  default: "bg-[hsl(var(--primary))] text-white hover:bg-[hsl(var(--primary-hover))] disabled:opacity-50 shadow-sm",
+  secondary: "bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary-hover))] disabled:opacity-50",
+  outline: "border border-[hsl(var(--border))] bg-transparent text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary))] hover:border-[hsl(var(--border-hover))] disabled:opacity-50",
+  ghost: "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--secondary))] hover:text-[hsl(var(--foreground))] disabled:opacity-50",
+  destructive: "bg-[hsl(var(--negative))] text-white hover:bg-[hsl(var(--negative)/0.9)] disabled:opacity-50",
 };
 
 const sizes = {
-  sm: "h-7 px-3 text-xs",
-  md: "h-9 px-4 text-sm",
-  lg: "h-11 px-6 text-base",
+  sm: "h-8 px-3 text-xs",
+  md: "h-10 px-4 text-sm",
+  lg: "h-12 px-6 text-base",
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -27,7 +28,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--primary))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))]",
         variants[variant],
         sizes[size],
         className

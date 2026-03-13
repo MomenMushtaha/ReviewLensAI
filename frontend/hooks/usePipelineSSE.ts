@@ -1,50 +1,35 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { getPipelineSSEUrl } from "@/lib/api";
+import { useState, useEffect } from "react";
 
 export type PipelineState =
-  | { status: "connecting" }
+  | { status: "idle" }
   | { status: "running"; stage: string; progress: number; message: string }
-  | { status: "complete"; projectId: string; reviewCount: number }
+  | { status: "complete"; projectId: string }
   | { status: "error"; message: string };
 
 export function usePipelineSSE(projectId: string | null): PipelineState {
-  const [state, setState] = useState<PipelineState>({ status: "connecting" });
-  const esRef = useRef<EventSource | null>(null);
+  const [state, setState] = useState<PipelineState>({ status: "idle" });
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId) {
+      setState({ status: "idle" });
+      return;
+    }
 
-    const es = new EventSource(getPipelineSSEUrl(projectId));
-    esRef.current = es;
-
-    es.addEventListener("progress", (e: MessageEvent) => {
-      const data = JSON.parse(e.data);
-      setState({ status: "running", stage: data.stage, progress: data.progress, message: data.message });
+    // For now, simulate completion since we don't have SSE endpoint
+    // In production, this would connect to an SSE endpoint
+    setState({ 
+      status: "running", 
+      stage: "analyzing", 
+      progress: 50, 
+      message: "Processing reviews..." 
     });
 
-    es.addEventListener("complete", (e: MessageEvent) => {
-      const data = JSON.parse(e.data);
-      setState({ status: "complete", projectId: data.project_id, reviewCount: data.review_count });
-      es.close();
-    });
+    const timer = setTimeout(() => {
+      setState({ status: "complete", projectId });
+    }, 2000);
 
-    es.addEventListener("error", (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data);
-        setState({ status: "error", message: data.message });
-      } catch {
-        setState({ status: "error", message: "Pipeline failed" });
-      }
-      es.close();
-    });
-
-    es.onerror = () => {
-      setState({ status: "error", message: "Connection lost" });
-      es.close();
-    };
-
-    return () => es.close();
+    return () => clearTimeout(timer);
   }, [projectId]);
 
   return state;

@@ -194,9 +194,11 @@ export async function scrapeTrustpilot(
   maxPages = 10,
   concurrency = 3
 ): Promise<ScrapeResult> {
-  // Normalize URL - support various Trustpilot domains (ca.trustpilot.com, uk.trustpilot.com, etc.)
+  // Normalize URL - support various Trustpilot domains (www., ca., uk., etc.)
   const baseUrl = url.replace(/\?.*$/, '').replace(/\/$/, '');
-  const trustpilotPattern = /^https?:\/\/([a-z]{2}\.)?trustpilot\.com\/review\//i;
+  
+  // Match trustpilot.com/review/ with optional subdomain (www, ca, uk, de, etc.)
+  const trustpilotPattern = /^https?:\/\/([a-z]{2,3}\.)?trustpilot\.com\/review\/.+/i;
   if (!trustpilotPattern.test(baseUrl)) {
     throw new ScraperError(
       'URL must be a Trustpilot review page (e.g. https://www.trustpilot.com/review/netflix.com)'

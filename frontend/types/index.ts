@@ -1,41 +1,66 @@
 export interface Project {
   id: string;
-  source_url: string | null;
-  platform: string;
   product_name: string | null;
-  status: "pending" | "scraping" | "ingesting" | "analyzing" | "summarizing" | "ready" | "error";
-  error_message: string | null;
+  platform: string;
+  trustpilot_url: string | null;
   review_count: number;
+  overall_rating: number | null;
+  summary_generated: boolean;
+  summary_text: string | null;
+  themes: string[];
+  sentiment_distribution: Record<string, number>;
   created_at: string;
-  completed_at: string | null;
+  updated_at: string;
 }
 
 export interface Review {
   id: string;
   project_id: string;
-  platform: string;
-  external_id: string | null;
-  reviewer_name: string | null;
-  rating: number | null;
-  title: string | null;
   body: string;
-  date: string | null;
-  sentiment: string | null;
+  title: string | null;
+  rating: number | null;
+  author: string | null;
+  created_date: string | null;
+  sentiment_score: number | null;
+  sentiment_label: string | null;
+  themes: string[];
+  body_hash: string;
   created_at: string;
 }
 
-export interface ThemeCluster {
+export interface Theme {
   cluster_id: number;
-  label: string | null;
+  label: string;
   keywords: string[];
   review_count: number;
-  avg_rating: number | null;
+  avg_sentiment: number;
+  avg_rating?: number;
+  sample_reviews: string[];
 }
 
-export interface TrendPoint {
-  period: string;
-  avg_rating: number;
-  count: number;
+// Alias for backwards compatibility
+export type ThemeCluster = Theme;
+
+export interface Analysis {
+  executive_summary?: string;
+  sentiment_distribution: Record<string, number>;
+  trend_data: Array<{ date: string; avgRating: number; count: number }>;
+  themes: Theme[];
+  pain_points: (PainPoint | string)[];
+  highlights: (Highlight | string)[];
+  recommendations: (Recommendation | string)[];
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  sources?: Array<{
+    id: string;
+    snippet: string;
+    rating: number | null;
+  }>;
+  guardrail_triggered?: boolean;
+  guardrail_category?: string;
 }
 
 export interface PainPoint {
@@ -51,34 +76,7 @@ export interface Highlight {
 }
 
 export interface Recommendation {
-  priority: string;
+  priority: "high" | "medium" | "low";
   action: string;
   rationale: string;
-}
-
-export interface Analysis {
-  id: string;
-  project_id: string;
-  sentiment_distribution: Record<string, number>;
-  rating_distribution: Record<string, number>;
-  themes: ThemeCluster[];
-  trend_data: TrendPoint[];
-  executive_summary: string | null;
-  pain_points: PainPoint[];
-  highlights: Highlight[];
-  recommendations: Recommendation[];
-  created_at: string;
-}
-
-export interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-  sources?: Array<{
-    review_id: string;
-    excerpt: string;
-    rating: number | null;
-    reviewer_name: string | null;
-  }>;
-  guardrailTriggered?: boolean;
-  guardrailCategory?: string | null;
 }

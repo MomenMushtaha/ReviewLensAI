@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useChat } from "@/hooks/useChat";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Send, Sparkles, Shield } from "lucide-react";
 
 export function ChatPanel({ projectId }: { projectId: string }) {
   const { messages, loading, send } = useChat(projectId);
@@ -13,7 +13,13 @@ export function ChatPanel({ projectId }: { projectId: string }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = () => { send(input); setInput(""); };
+  const handleSend = () => { 
+    if (input.trim()) {
+      send(input); 
+      setInput(""); 
+    }
+  };
+  
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
@@ -22,29 +28,41 @@ export function ChatPanel({ projectId }: { projectId: string }) {
     "What are the most common complaints?",
     "What do customers love most?",
     "How has sentiment changed over time?",
-    "Which issues are mentioned most frequently?",
+    "Which issues need immediate attention?",
   ];
 
   return (
-    <div className="flex h-[600px] flex-col rounded-xl border border-gray-200 bg-white overflow-hidden">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-4 py-3">
-        <span className="text-lg">💬</span>
-        <span className="text-sm font-medium text-gray-700">ReviewLens AI</span>
-        <Badge variant="outline" className="ml-auto text-xs">Scope-locked to ingested reviews</Badge>
+      <div className="flex items-center gap-3 border-b border-[hsl(var(--border))] px-5 py-4">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--info))] flex items-center justify-center">
+          <Sparkles className="h-4 w-4 text-white" />
+        </div>
+        <div>
+          <span className="font-medium text-[hsl(var(--foreground))]">ReviewLens AI</span>
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">Answers based on your review data</p>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
         {messages.length === 0 && (
-          <div className="space-y-3">
-            <p className="text-sm text-gray-500 text-center">Ask anything about the ingested reviews.</p>
+          <div className="space-y-6 py-8">
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-2xl bg-[hsl(var(--secondary))] flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="h-7 w-7 text-[hsl(var(--primary))]" />
+              </div>
+              <h3 className="font-semibold text-[hsl(var(--foreground))] mb-1">How can I help?</h3>
+              <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                Ask me anything about your reviews
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => send(s)}
-                  className="rounded-lg border border-gray-200 p-2.5 text-left text-xs text-gray-600 hover:bg-gray-50 hover:border-indigo-300 transition-colors"
+                  className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-3 text-left text-sm text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary-hover))] hover:border-[hsl(var(--primary)/0.3)] transition-all"
                 >
                   {s}
                 </button>
@@ -52,33 +70,42 @@ export function ChatPanel({ projectId }: { projectId: string }) {
             </div>
           </div>
         )}
+        
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className="max-w-[80%] space-y-1">
+            <div className="max-w-[85%] space-y-2">
               {msg.guardrailTriggered && (
-                <div className="flex items-center gap-1 text-xs text-amber-600">
-                  <span>🛡️</span>
-                  <span>Scope guard triggered</span>
+                <div className="flex items-center gap-2 text-xs text-[hsl(var(--neutral))]">
+                  <Shield className="h-3 w-3" />
+                  <span>Response limited to review data</span>
                 </div>
               )}
               <div
-                className={`rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                   msg.role === "user"
-                    ? "bg-indigo-600 text-white rounded-br-sm"
-                    : "bg-gray-100 text-gray-800 rounded-bl-sm"
+                    ? "bg-[hsl(var(--primary))] text-white rounded-br-md"
+                    : "bg-[hsl(var(--secondary))] text-[hsl(var(--foreground))] rounded-bl-md"
                 }`}
               >
                 {msg.content}
               </div>
               {msg.sources && msg.sources.length > 0 && (
-                <div className="space-y-1 ml-1">
+                <div className="space-y-2 pl-2">
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">Sources:</p>
                   {msg.sources.slice(0, 2).map((src, si) => (
-                    <div key={si} className="rounded-lg border border-gray-100 bg-gray-50 p-2 text-xs text-gray-500">
-                      <span className="font-medium text-gray-700">{src.reviewer_name || "Anonymous"}</span>
-                      {src.rating && (
-                        <span className="ml-1 text-yellow-500">★{src.rating.toFixed(0)}</span>
-                      )}
-                      <p className="mt-0.5 line-clamp-2">{src.excerpt}</p>
+                    <div 
+                      key={si} 
+                      className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-3 text-xs"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-[hsl(var(--foreground))]">
+                          {src.reviewer_name || "Anonymous"}
+                        </span>
+                        {src.rating && (
+                          <span className="text-[hsl(var(--neutral))]">{"★".repeat(Math.round(src.rating))}</span>
+                        )}
+                      </div>
+                      <p className="text-[hsl(var(--muted-foreground))] line-clamp-2">{src.excerpt}</p>
                     </div>
                   ))}
                 </div>
@@ -86,10 +113,18 @@ export function ChatPanel({ projectId }: { projectId: string }) {
             </div>
           </div>
         ))}
+        
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 text-gray-400 text-sm">
-              <span className="animate-pulse">Thinking…</span>
+            <div className="bg-[hsl(var(--secondary))] rounded-2xl rounded-bl-md px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 rounded-full bg-[hsl(var(--primary))] animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 rounded-full bg-[hsl(var(--primary))] animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 rounded-full bg-[hsl(var(--primary))] animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+                <span>Thinking...</span>
+              </div>
             </div>
           </div>
         )}
@@ -97,16 +132,27 @@ export function ChatPanel({ projectId }: { projectId: string }) {
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-100 p-3 flex gap-2">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder="Ask about the reviews… (Enter to send)"
-          rows={1}
-          className="flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        />
-        <Button onClick={handleSend} disabled={!input.trim() || loading} size="md">Send</Button>
+      <div className="border-t border-[hsl(var(--border))] p-4">
+        <div className="flex gap-3">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder="Ask about your reviews..."
+            rows={1}
+            className="flex-1 resize-none rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-4 py-3 text-sm text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:border-[hsl(var(--primary))] focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))] transition-all"
+          />
+          <Button 
+            onClick={handleSend} 
+            disabled={!input.trim() || loading} 
+            className="px-4"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2 text-center">
+          Press Enter to send, Shift+Enter for new line
+        </p>
       </div>
     </div>
   );

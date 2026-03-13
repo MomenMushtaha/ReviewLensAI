@@ -5,13 +5,19 @@ export async function ingestReviews(data: {
   csvData?: string;
   productName?: string;
 }): Promise<{ projectId: string; productName: string; reviewCount: number; platform: string }> {
+  console.log("[v0] ingestReviews called with data:", { url: data.url, hasCsvData: !!data.csvData, productName: data.productName });
+  
   const res = await fetch('/api/ingest', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+  
+  console.log("[v0] ingestReviews response status:", res.status);
+  
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: 'Request failed' }));
+    console.log("[v0] ingestReviews error:", error);
     throw new Error(error.error || 'Failed to ingest reviews');
   }
   return res.json();
@@ -91,19 +97,25 @@ export async function runPipeline(formData: FormData): Promise<{ project_id: str
   const file = formData.get('file') as File | null;
   const productName = formData.get('product_name') as string | null;
 
+  console.log("[v0] runPipeline called with:", { url, file: file?.name, productName });
+
   let csvData: string | undefined;
   if (file) {
     csvData = await file.text();
   }
 
+  console.log("[v0] Calling ingestReviews...");
   const result = await ingestReviews({
     url: url || undefined,
     csvData,
     productName: productName || undefined,
   });
+  console.log("[v0] ingestReviews result:", result);
 
   // Also run analysis after ingestion
+  console.log("[v0] Calling runAnalysis...");
   await runAnalysis(result.projectId);
+  console.log("[v0] runAnalysis complete");
 
   return { project_id: result.projectId };
 }
