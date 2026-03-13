@@ -11,6 +11,7 @@ interface RecentAnalysis {
   created_at: string;
 }
 
+// ReviewLens AI - Home Page
 export default function HomePage() {
   const router = useRouter();
   const [recent, setRecent] = useState<RecentAnalysis[]>([]);
