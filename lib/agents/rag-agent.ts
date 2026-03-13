@@ -1,4 +1,4 @@
-import openai, { getEmbedding } from '@/lib/openai';
+import { openai, getEmbedding } from '@/lib/openai';
 import { createClient } from '@/lib/supabase';
 import { 
   preFilter, 

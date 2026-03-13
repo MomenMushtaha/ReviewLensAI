@@ -26,8 +26,8 @@ export function useChat(projectId: string) {
     setLoading(true);
     try {
       const data = await sendChat({
-        projectId: projectId,
-        sessionId: getSessionId(),
+        project_id: projectId,
+        session_id: getSessionId(),
         message: content,
       });
       const assistantMsg: ChatMessage = {
