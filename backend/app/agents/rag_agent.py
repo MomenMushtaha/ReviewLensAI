@@ -1,6 +1,6 @@
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from app.config import settings
 from app.database import get_embedder
@@ -8,7 +8,7 @@ from app.models.project import Project
 from app.agents.guardrails import pre_filter, post_validate, SAFE_FALLBACK
 from app.agents.prompts import AGENT_SYSTEM_PROMPT
 
-_client = OpenAI(api_key=settings.openai_api_key)
+_client = AsyncOpenAI(api_key=settings.openai_api_key)
 
 
 async def _retrieve_chunks(question: str, project_id: str, db: AsyncSession) -> list[dict]:
@@ -95,7 +95,7 @@ async def answer(
     messages += history
     messages.append({"role": "user", "content": question})
 
-    response = _client.chat.completions.create(
+    response = await _client.chat.completions.create(
         model=settings.openai_model,
         max_tokens=800,
         messages=messages,
