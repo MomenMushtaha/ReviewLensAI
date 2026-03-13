@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     supabase_anon_key: str = ""
 
     # AI
-    anthropic_api_key: str
-    claude_model: str = "claude-haiku-4-5"
+    openai_api_key: str
+    openai_model: str = "gpt-4o-mini"
 
     # App
     env: str = "development"
