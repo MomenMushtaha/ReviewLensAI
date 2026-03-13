@@ -3,13 +3,13 @@ import random
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from tenacity import retry, stop_after_attempt, wait_exponential
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from app.config import settings
 from app.models.analysis import Analysis
 from app.utils.text_cleaner import truncate
 
-_client = OpenAI(api_key=settings.openai_api_key)
+_client = AsyncOpenAI(api_key=settings.openai_api_key)
 
 SUMMARIZER_TOOL = {
     "type": "function",
@@ -72,8 +72,8 @@ SUMMARIZER_TOOL = {
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-def _call_openai(system_prompt: str, user_prompt: str) -> dict:
-    response = _client.chat.completions.create(
+async def _call_openai(system_prompt: str, user_prompt: str) -> dict:
+    response = await _client.chat.completions.create(
         model=settings.openai_model,
         max_tokens=1500,
         messages=[
@@ -147,9 +147,9 @@ Please produce a structured summary using the produce_summary tool."""
     )
 
     if progress_cb:
-        await progress_cb("summarizing", 40, "Calling OpenAI…")
+        await progress_cb("summarizing", 40, "Calling AI…")
 
-    result = _call_openai(system_prompt, user_prompt)
+    result = await _call_openai(system_prompt, user_prompt)
 
     if progress_cb:
         await progress_cb("summarizing", 80, "Saving summary…")
