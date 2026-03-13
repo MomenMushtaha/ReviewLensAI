@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: reviewlens-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: CLAUDE_MODEL
+        value: claude-haiku-4-5
+      - key: ENV
+        value: production
+      - key: SCRAPER_MAX_PAGES
+        value: "10"
+      - key: SCRAPER_CONCURRENCY
+        value: "3"
+      - key: EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
+      - key: SIMILARITY_THRESHOLD
+        value: "0.20"
+      - key: ALLOWED_ORIGINS
+        value: https://reviewlens-ai.vercel.app,http://localhost:3000
+    healthCheckPath: /api/health
