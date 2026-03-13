@@ -125,26 +125,30 @@ export async function POST(request: NextRequest) {
       embedding: embeddings[i] || null,
     }));
 
-    // Insert reviews one by one, skipping duplicates
+    // Insert reviews in batches with upsert to handle duplicates efficiently
+    console.log('[v0] Inserting', reviewsToInsert.length, 'reviews in batches...');
     let insertedCount = 0;
-    for (const review of reviewsToInsert) {
-      const { error: insertError } = await supabase
+    const batchSize = 50;
+    
+    for (let i = 0; i < reviewsToInsert.length; i += batchSize) {
+      const batch = reviewsToInsert.slice(i, i + batchSize);
+      const { data, error: insertError } = await supabase
         .from('reviews')
-        .insert(review);
+        .upsert(batch, { 
+          onConflict: 'project_id,body_hash',
+          ignoreDuplicates: true 
+        })
+        .select('id');
 
       if (insertError) {
-        // Skip duplicates (code 23505 is unique violation)
-        if (insertError.code === '23505') {
-          console.log('[v0] Skipping duplicate review');
-          continue;
-        }
-        console.error('Error inserting review:', insertError);
+        console.error('[v0] Batch insert error:', insertError);
       } else {
-        insertedCount++;
+        insertedCount += data?.length || 0;
+        console.log('[v0] Batch', Math.floor(i / batchSize) + 1, 'inserted', data?.length || 0, 'reviews');
       }
     }
     
-    console.log('[v0] Inserted', insertedCount, 'new reviews out of', reviewsToInsert.length, 'total');
+    console.log('[v0] Total inserted:', insertedCount, 'reviews');
 
     // Get total review count for this project
     const { count: totalReviews } = await supabase
