@@ -3,15 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navigation } from "@/components/Navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { runPipeline } from "@/lib/api";
-import { Globe, Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Globe, Upload, Loader2, CheckCircle2, AlertCircle, ArrowRight, FileText, Zap } from "lucide-react";
 
 export default function ImportPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("url");
+  const [activeTab, setActiveTab] = useState<"url" | "csv">("url");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [productName, setProductName] = useState("");
@@ -35,11 +33,10 @@ export default function ImportPage() {
 
       const result = await runPipeline(formData);
       
-      // Save to recent analyses
       const recent = JSON.parse(localStorage.getItem("recent_analyses") || "[]");
       recent.unshift({
         id: result.project_id,
-        product_name: productName || null,
+        product_name: productName || url.split("/").pop() || "Untitled",
         review_count: 0,
         created_at: new Date().toISOString(),
       });
@@ -57,152 +54,197 @@ export default function ImportPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[hsl(var(--background))]">
       <Navigation />
       
-      <main className="mx-auto max-w-3xl px-6 py-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">Import Reviews</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Import reviews from Trustpilot or upload a CSV file for analysis
+      <div className="absolute inset-x-0 top-16 h-[400px] gradient-bg pointer-events-none" />
+      
+      <main className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-12">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <p className="text-sm font-medium text-[hsl(var(--primary))] mb-2">Import</p>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[hsl(var(--foreground))]">
+            Import your reviews
+          </h1>
+          <p className="text-[hsl(var(--muted-foreground))] mt-3 max-w-md mx-auto">
+            Scrape reviews from Trustpilot or upload a CSV file to get AI-powered insights
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Data Source</CardTitle>
-            <CardDescription>
-              Choose how you want to import your review data
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="url" className="gap-2">
-                  <Globe className="h-4 w-4" />
-                  Trustpilot URL
-                </TabsTrigger>
-                <TabsTrigger value="csv" className="gap-2">
-                  <Upload className="h-4 w-4" />
-                  CSV Upload
-                </TabsTrigger>
-              </TabsList>
+        {/* Import Card */}
+        <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] overflow-hidden">
+          {/* Tab Buttons */}
+          <div className="flex border-b border-[hsl(var(--border))]">
+            <button
+              onClick={() => setActiveTab("url")}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-medium transition-all ${
+                activeTab === "url"
+                  ? "bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border-b-2 border-[hsl(var(--primary))]"
+                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary)/0.5)]"
+              }`}
+            >
+              <Globe className="h-4 w-4" />
+              Trustpilot URL
+            </button>
+            <button
+              onClick={() => setActiveTab("csv")}
+              className={`flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-medium transition-all ${
+                activeTab === "csv"
+                  ? "bg-[hsl(var(--background))] text-[hsl(var(--foreground))] border-b-2 border-[hsl(var(--primary))]"
+                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--secondary)/0.5)]"
+              }`}
+            >
+              <Upload className="h-4 w-4" />
+              Upload CSV
+            </button>
+          </div>
 
-              <form onSubmit={handleSubmit}>
-                <TabsContent value="url" className="space-y-4">
-                  <div>
-                    <label htmlFor="url" className="block text-sm font-medium text-foreground mb-2">
-                      Trustpilot URL
-                    </label>
+          {/* Form Content */}
+          <form onSubmit={handleSubmit} className="p-6 sm:p-8">
+            {activeTab === "url" ? (
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="url" className="block text-sm font-medium text-[hsl(var(--foreground))] mb-2">
+                    Trustpilot Review Page URL
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[hsl(var(--muted-foreground))]" />
                     <input
                       id="url"
                       type="url"
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://www.trustpilot.com/review/example.com"
-                      className="w-full px-4 py-3 rounded-lg bg-white border border-border text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="https://www.trustpilot.com/review/company.com"
+                      className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-[hsl(var(--input))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] focus:border-transparent transition-all"
                       required={activeTab === "url"}
                     />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Example: https://www.trustpilot.com/review/airbnb.com
-                    </p>
                   </div>
-                </TabsContent>
-
-                <TabsContent value="csv" className="space-y-4">
-                  <div>
-                    <label htmlFor="file" className="block text-sm font-medium text-foreground mb-2">
-                      CSV File
-                    </label>
-                    <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
-                      <input
-                        id="file"
-                        type="file"
-                        accept=".csv"
-                        onChange={(e) => setFile(e.target.files?.[0] || null)}
-                        className="hidden"
-                      />
-                      <label htmlFor="file" className="cursor-pointer">
-                        <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-foreground font-medium">
-                          {file ? file.name : "Click to upload or drag and drop"}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          CSV with columns: body, rating, date (optional)
-                        </p>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="productName" className="block text-sm font-medium text-foreground mb-2">
-                      Product Name (optional)
-                    </label>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2 flex items-center gap-1">
+                    <Zap className="h-3 w-3" />
+                    We&apos;ll scrape up to 100 reviews automatically
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <label htmlFor="file" className="block text-sm font-medium text-[hsl(var(--foreground))] mb-2">
+                    Upload CSV File
+                  </label>
+                  <label
+                    htmlFor="file"
+                    className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                      file
+                        ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary)/0.05)]"
+                        : "border-[hsl(var(--border))] hover:border-[hsl(var(--primary)/0.5)] hover:bg-[hsl(var(--secondary)/0.5)]"
+                    }`}
+                  >
                     <input
-                      id="productName"
-                      type="text"
-                      value={productName}
-                      onChange={(e) => setProductName(e.target.value)}
-                      placeholder="Enter product or company name"
-                      className="w-full px-4 py-3 rounded-lg bg-white border border-border text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary"
+                      id="file"
+                      type="file"
+                      accept=".csv"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      className="hidden"
                     />
-                  </div>
-                </TabsContent>
+                    {file ? (
+                      <>
+                        <FileText className="h-10 w-10 text-[hsl(var(--primary))] mb-3" />
+                        <p className="text-sm font-medium text-[hsl(var(--foreground))]">{file.name}</p>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Click to change file</p>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-10 w-10 text-[hsl(var(--muted-foreground))] mb-3" />
+                        <p className="text-sm font-medium text-[hsl(var(--foreground))]">
+                          Drop your CSV here or click to browse
+                        </p>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+                          Required column: body or text
+                        </p>
+                      </>
+                    )}
+                  </label>
+                </div>
 
-                {error && (
-                  <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 text-destructive mt-4">
-                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                    <p className="text-sm">{error}</p>
-                  </div>
-                )}
+                <div>
+                  <label htmlFor="productName" className="block text-sm font-medium text-[hsl(var(--foreground))] mb-2">
+                    Product/Company Name <span className="text-[hsl(var(--muted-foreground))]">(optional)</span>
+                  </label>
+                  <input
+                    id="productName"
+                    type="text"
+                    value={productName}
+                    onChange={(e) => setProductName(e.target.value)}
+                    placeholder="e.g., Acme Inc"
+                    className="w-full px-4 py-3.5 rounded-xl bg-[hsl(var(--input))] border border-[hsl(var(--border))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--primary))] focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+            )}
 
-                {success && (
-                  <div className="flex items-center gap-2 p-4 rounded-lg bg-success/10 text-success mt-4">
-                    <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                    <p className="text-sm">Reviews imported successfully! Redirecting...</p>
-                  </div>
-                )}
+            {/* Status Messages */}
+            {error && (
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-[hsl(var(--negative)/0.1)] border border-[hsl(var(--negative)/0.2)] mt-6">
+                <AlertCircle className="h-5 w-5 text-[hsl(var(--negative))] flex-shrink-0" />
+                <p className="text-sm text-[hsl(var(--negative))]">{error}</p>
+              </div>
+            )}
 
-                <Button
-                  type="submit"
-                  className="w-full mt-6"
-                  disabled={isLoading || success || (activeTab === "url" ? !url : !file)}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Importing...
-                    </>
-                  ) : (
-                    "Analyze Reviews"
-                  )}
-                </Button>
-              </form>
-            </Tabs>
-          </CardContent>
-        </Card>
+            {success && (
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-[hsl(var(--positive)/0.1)] border border-[hsl(var(--positive)/0.2)] mt-6">
+                <CheckCircle2 className="h-5 w-5 text-[hsl(var(--positive))] flex-shrink-0" />
+                <p className="text-sm text-[hsl(var(--positive))]">
+                  Reviews imported successfully! Redirecting to insights...
+                </p>
+              </div>
+            )}
 
-        {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-          <Card>
-            <CardContent className="pt-6">
-              <h3 className="text-sm font-medium text-foreground mb-2">Trustpilot Scraping</h3>
-              <p className="text-xs text-muted-foreground">
-                Automatically extracts reviews from any Trustpilot company page. 
-                We scrape up to 100 reviews per request.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <h3 className="text-sm font-medium text-foreground mb-2">CSV Format</h3>
-              <p className="text-xs text-muted-foreground">
-                Upload a CSV with at minimum a "body" or "text" column. 
-                Optional columns: rating, date, author, title.
-              </p>
-            </CardContent>
-          </Card>
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="w-full mt-6 h-12 text-base glow-sm"
+              disabled={isLoading || success || (activeTab === "url" ? !url : !file)}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  Analyzing reviews...
+                </>
+              ) : (
+                <>
+                  Start Analysis
+                  <ArrowRight className="h-5 w-5 ml-2" />
+                </>
+              )}
+            </Button>
+          </form>
+        </div>
+
+        {/* Feature Cards */}
+        <div className="grid sm:grid-cols-2 gap-4 mt-8">
+          <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-[hsl(var(--primary)/0.1)] flex items-center justify-center">
+                <Globe className="h-5 w-5 text-[hsl(var(--primary))]" />
+              </div>
+              <h3 className="font-semibold text-[hsl(var(--foreground))]">Trustpilot Scraping</h3>
+            </div>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
+              Automatically extracts reviews from any Trustpilot page including ratings, dates, and author information.
+            </p>
+          </div>
+          
+          <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-lg bg-[hsl(var(--info)/0.1)] flex items-center justify-center">
+                <FileText className="h-5 w-5 text-[hsl(var(--info))]" />
+              </div>
+              <h3 className="font-semibold text-[hsl(var(--foreground))]">CSV Format</h3>
+            </div>
+            <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
+              Upload any CSV with a &quot;body&quot; or &quot;text&quot; column. Optional: rating, date, author, title columns.
+            </p>
+          </div>
         </div>
       </main>
     </div>
