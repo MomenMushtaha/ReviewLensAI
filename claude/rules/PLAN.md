@@ -15,7 +15,7 @@ This is a greenfield project for the FutureSight take-home assignment. The goal 
 | Database | Supabase PostgreSQL via SQLAlchemy + asyncpg | Hosted, free tier, no persistent disk needed on Render |
 | Vector Store | pgvector (Supabase built-in extension) | Eliminates ChromaDB; one service for both relational + vector data |
 | Embeddings | `sentence-transformers` (all-MiniLM-L6-v2) | Free, local, 384-dim, fast on CPU |
-| AI Model | claude-haiku-4-5 (default), claude-sonnet-4-6 (configurable) | Haiku for cost; configurable for quality |
+| AI Model | gpt-4o-mini (default, via OpenAI API) | Low cost; good quality for summarization and chat |
 | Scraper | httpx + BeautifulSoup4 | Trustpilot is SSR; lighter than Playwright |
 | Progress | Server-Sent Events (SSE) | Real-time progress without WebSocket complexity |
 | Target Platform | Trustpilot (primary) + CSV upload (fallback) | JSON-LD + `__NEXT_DATA__` structured data — no brittle CSS selectors |
@@ -242,11 +242,11 @@ class Analysis(Base):
 
 ## Component 4: Summarizer (`backend/app/pipeline/summarizer.py`)
 
-**Responsibilities:** Take `AnalysisResult` + sampled reviews → Claude API call → write structured summary back to `analyses` table.
+**Responsibilities:** Take `AnalysisResult` + sampled reviews → OpenAI API call → write structured summary back to `analyses` table.
 
 **Token budget:** Sample up to 30 reviews (top 5 positive, top 5 negative, 20 random); truncate each body to 300 chars. ~2,500 input tokens; `max_tokens=1500`.
 
-**Claude call:** Use **tool use** (function calling) with a `produce_summary` tool to enforce structured output without brittle JSON parsing:
+**OpenAI call:** Use **tool use** (function calling) with a `produce_summary` tool to enforce structured output without brittle JSON parsing:
 
 ```python
 tools = [{
@@ -271,7 +271,7 @@ System prompt: "You are a product intelligence analyst. Analyze the provided rev
 
 **Retry:** `tenacity` — 3 attempts, exponential backoff starting at 2s.
 
-**Libraries:** `anthropic>=0.34.2`, `tenacity`
+**Libraries:** `openai>=1.40.0`, `tenacity`
 
 ---
 
@@ -297,7 +297,7 @@ User question
   └─ Explicit decline format specified
       │
       ▼
-[Claude API call — claude-haiku-4-5]
+[OpenAI API call — gpt-4o-mini]
       │
       ▼
 [Layer 3: Post-response validator]
@@ -447,8 +447,8 @@ SUPABASE_URL=https://[ref].supabase.co
 SUPABASE_ANON_KEY=eyJ...
 
 # AI
-ANTHROPIC_API_KEY=sk-ant-...
-CLAUDE_MODEL=claude-haiku-4-5
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
 
 # App
 ENV=production
@@ -481,7 +481,7 @@ NEXT_PUBLIC_API_URL=https://reviewlens-api.onrender.com
 
 ## Key Libraries
 
-**Backend:** `fastapi`, `uvicorn`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `pgvector`, `alembic`, `httpx[http2]`, `beautifulsoup4`, `lxml`, `pandas`, `scikit-learn`, `vaderSentiment`, `sentence-transformers`, `anthropic`, `tenacity`, `python-multipart`
+**Backend:** `fastapi`, `uvicorn`, `pydantic-settings`, `sqlalchemy[asyncio]`, `asyncpg`, `pgvector`, `alembic`, `httpx[http2]`, `beautifulsoup4`, `lxml`, `pandas`, `scikit-learn`, `vaderSentiment`, `sentence-transformers`, `openai`, `tenacity`, `python-multipart`
 
 **Frontend:** `next@14`, `react@18`, `recharts`, `tailwindcss`, `@radix-ui/*` (shadcn/ui), `clsx`, `tailwind-merge`
 
