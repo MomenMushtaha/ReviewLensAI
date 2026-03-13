@@ -83,6 +83,9 @@ export async function sendChat(data: {
   return res.json();
 }
 
+// Alias for backwards compatibility
+export const sendChatMessage = sendChat;
+
 // Legacy functions for backwards compatibility
 export async function createProject(data: {
   source_url?: string;

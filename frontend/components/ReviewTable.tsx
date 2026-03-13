@@ -25,7 +25,7 @@ export function ReviewTable({ projectId }: { projectId: string }) {
     setLoading(true);
     try {
       const data = await getProjectReviews(projectId, {
-        page,
+        offset: (page - 1) * limit,
         limit,
         sentiment: sentiment || undefined,
       });
