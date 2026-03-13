@@ -2,6 +2,10 @@
 
 **Review Intelligence Portal** — Scrape Trustpilot reviews, analyze them with AI, and ask questions about them through a guardrailed chat interface.
 
+> **Development Note (March 2026)**: Vercel v0 is now leading development. Codex is reserved for stubborn bugs.
+>
+> **Earlier Update (March 2026)**: Claude Code ran out of usage, so Codex will be used until the limit resets.
+
 ## Architecture
 
 ```
