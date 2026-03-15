@@ -87,7 +87,6 @@ export default function HomePage() {
                     <p className="text-xs text-gray-400">{formatDate(r.created_at)}</p>
                   </button>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400">{r.id.slice(0, 8)}…</span>
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
