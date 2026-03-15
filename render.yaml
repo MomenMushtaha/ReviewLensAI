@@ -23,5 +23,5 @@ services:
       - key: SIMILARITY_THRESHOLD
         value: "0.20"
       - key: ALLOWED_ORIGINS
-        value: https://reviewlens-ai.vercel.app,http://localhost:3000
+        value: https://v0-review-lens-ai.vercel.app,https://v0-review-lens-ai-momenmushtahas-projects.vercel.app,http://localhost:3000
     healthCheckPath: /api/health
