@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Float, Boolean, DateTime, Integer, ForeignKey, func
+from sqlalchemy import String, Float, Boolean, DateTime, Integer, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
 from app.database import Base
@@ -8,6 +8,9 @@ from app.database import Base
 
 class Review(Base):
     __tablename__ = "reviews"
+    __table_args__ = (
+        UniqueConstraint("project_id", "body_hash", name="uq_review_project_body"),
+    )
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     project_id: Mapped[str] = mapped_column(String, ForeignKey("projects.id", ondelete="CASCADE"), index=True)
@@ -17,7 +20,7 @@ class Review(Base):
     rating: Mapped[float | None] = mapped_column(Float, nullable=True)
     title: Mapped[str | None] = mapped_column(String, nullable=True)
     body: Mapped[str] = mapped_column(String)
-    body_hash: Mapped[str] = mapped_column(String, unique=True, index=True)
+    body_hash: Mapped[str] = mapped_column(String, index=True)
     date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     helpful_count: Mapped[int] = mapped_column(Integer, default=0)
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
