@@ -23,7 +23,7 @@ export function TrendChart({ data }: { data: TrendPoint[] }) {
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="period" tick={{ fontSize: 11 }} />
+          <XAxis dataKey="month" tick={{ fontSize: 11 }} />
           <YAxis domain={[1, 5]} tickCount={5} tick={{ fontSize: 11 }} />
           <Tooltip formatter={(value) => [(value as number).toFixed(2), "Avg Rating"]} />
           <Line

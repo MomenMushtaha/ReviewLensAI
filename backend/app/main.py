@@ -1,3 +1,5 @@
+import os
+import sys
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,8 +10,10 @@ import subprocess
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Run Alembic migrations
-    subprocess.run(["alembic", "upgrade", "head"], check=True)
+    # Run Alembic migrations using the same Python interpreter
+    venv_bin = os.path.dirname(sys.executable)
+    alembic_cmd = os.path.join(venv_bin, "alembic")
+    subprocess.run([alembic_cmd, "upgrade", "head"], check=True)
 
     # Load sentence-transformers embedder
     from sentence_transformers import SentenceTransformer
@@ -23,12 +27,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="ReviewLens AI", lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.origins_list,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if settings.env == "development":
+    # In dev, allow any origin (preview servers use random ports)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.origins_list,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 from app.routers import projects, pipeline, chat  # noqa: E402
 
