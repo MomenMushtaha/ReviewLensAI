@@ -12,6 +12,37 @@ interface RecentAnalysis {
   created_at: string;
 }
 
+const FEATURES = [
+  {
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    ),
+    label: "Sentiment Analysis",
+    desc: "VADER + star-rating override",
+  },
+  {
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>
+    ),
+    label: "Theme Clustering",
+    desc: "TF-IDF + KMeans discovery",
+  },
+  {
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+    ),
+    label: "Rating Trends",
+    desc: "Monthly averages over time",
+  },
+  {
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    ),
+    label: "Guardrailed Q&A",
+    desc: "RAG chat with 3-layer safety",
+  },
+];
+
 export default function HomePage() {
   const router = useRouter();
   const [recent, setRecent] = useState<RecentAnalysis[]>([]);
@@ -24,94 +55,116 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen mesh-gradient flex flex-col">
       {/* Header */}
-      <header className="border-b border-gray-100 bg-white">
+      <header className="border-b border-white/5">
         <div className="mx-auto max-w-5xl px-6 py-4 flex items-center gap-3">
-          <span className="text-xl font-bold text-gray-900">ReviewLens AI</span>
-          <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
-            Review Intelligence Portal
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+              <div className="h-3 w-3 rounded-sm bg-indigo-400" />
+            </div>
+            <span className="text-lg font-semibold text-white tracking-tight">ReviewLens</span>
+          </div>
+          <span className="rounded-full bg-white/5 border border-white/10 px-2.5 py-0.5 text-[10px] font-medium text-zinc-400 uppercase tracking-widest">
+            AI
           </span>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-12">
+      <main className="mx-auto max-w-5xl px-6 py-16 flex-1">
         {/* Hero */}
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-            Understand what your customers really think
+        <div className="mb-12 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 mb-6">
+            <div className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse-dot" />
+            <span className="text-xs font-medium text-indigo-300">AI-Powered Review Intelligence</span>
+          </div>
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl gradient-text text-balance">
+            Understand what your
+            <br />
+            customers really think
           </h1>
-          <p className="mt-3 text-gray-500 max-w-xl mx-auto">
-            Paste a Trustpilot URL or upload a CSV to get AI-powered analysis: sentiment, themes,
-            trends, and a guardrailed Q&amp;A assistant — all in minutes.
+          <p className="mt-4 text-zinc-500 max-w-lg mx-auto text-sm leading-relaxed">
+            Paste a Trustpilot URL or upload a CSV. Get sentiment analysis, theme discovery,
+            rating trends, and a guardrailed AI assistant — all in minutes.
           </p>
         </div>
 
         {/* Form */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+        <div className="glass rounded-2xl p-8 glow-accent">
           <UrlInputForm />
         </div>
 
-        {/* Feature bullets */}
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[
-            { icon: "🔍", label: "Sentiment Analysis" },
-            { icon: "🏷️", label: "Theme Clustering" },
-            { icon: "📈", label: "Rating Trends" },
-            { icon: "💬", label: "Guardrailed Q&A" },
-          ].map((f) => (
-            <div key={f.label} className="rounded-xl border border-gray-100 bg-white p-4 text-center">
-              <div className="text-2xl mb-1">{f.icon}</div>
-              <p className="text-xs font-medium text-gray-600">{f.label}</p>
+        {/* Features */}
+        <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {FEATURES.map((f) => (
+            <div
+              key={f.label}
+              className="group glass glass-hover rounded-xl p-4 text-center transition-all duration-200 cursor-default"
+            >
+              <div className="mx-auto mb-2 h-10 w-10 rounded-lg bg-white/5 flex items-center justify-center text-indigo-400 group-hover:text-indigo-300 transition-colors">
+                {f.icon}
+              </div>
+              <p className="text-xs font-medium text-zinc-300">{f.label}</p>
+              <p className="text-[10px] text-zinc-600 mt-0.5">{f.desc}</p>
             </div>
           ))}
         </div>
 
         {/* Recent analyses */}
         {recent.length > 0 && (
-          <div className="mt-10">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Recent Analyses</h2>
+          <div className="mt-12">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Recent Analyses</h2>
+              <div className="flex-1 h-px bg-white/5" />
+            </div>
             <div className="space-y-2">
               {recent.map((r) => (
                 <div
                   key={r.id}
-                  className="flex w-full items-center justify-between rounded-lg border border-gray-100 bg-white px-4 py-3 hover:border-indigo-200 transition-colors"
+                  className="glass glass-hover rounded-xl px-4 py-3 flex items-center justify-between transition-all duration-200"
                 >
                   <button
                     onClick={() => router.push(`/project/${r.id}`)}
-                    className="flex-1 text-left"
+                    className="flex-1 text-left group"
                   >
-                    <p className="text-sm font-medium text-gray-800">
+                    <p className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">
                       {r.product_name || "Analysis"}
                     </p>
-                    <p className="text-xs text-gray-400">{formatDate(r.created_at)}</p>
+                    <p className="text-xs text-zinc-600">{formatDate(r.created_at)}</p>
                   </button>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (!confirm("Delete this analysis? This cannot be undone.")) return;
-                        try {
-                          await deleteProject(r.id);
-                        } catch {}
-                        const updated = recent.filter((a) => a.id !== r.id);
-                        setRecent(updated);
-                        localStorage.setItem("recent_analyses", JSON.stringify(updated));
-                      }}
-                      className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-                      title="Delete analysis"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                      </svg>
-                    </button>
-                  </div>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (!confirm("Delete this analysis? This cannot be undone.")) return;
+                      try { await deleteProject(r.id); } catch {}
+                      const updated = recent.filter((a) => a.id !== r.id);
+                      setRecent(updated);
+                      localStorage.setItem("recent_analyses", JSON.stringify(updated));
+                    }}
+                    className="rounded-lg p-2 text-zinc-600 hover:bg-red-500/10 hover:text-red-400 transition-all"
+                    title="Delete analysis"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                    </svg>
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         )}
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-white/5">
+        <div className="mx-auto max-w-5xl px-6 py-6 flex items-center justify-between">
+          <p className="text-[10px] text-zinc-600">Built with Claude Code</p>
+          <div className="flex items-center gap-1">
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="text-[10px] text-zinc-600">All systems operational</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

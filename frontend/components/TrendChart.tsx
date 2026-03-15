@@ -13,7 +13,7 @@ import type { TrendPoint } from "@/types";
 export function TrendChart({ data }: { data: TrendPoint[] }) {
   if (!data || data.length < 2) {
     return (
-      <p className="text-sm text-gray-400 py-4 text-center">
+      <p className="text-sm text-zinc-500 py-4 text-center">
         Not enough data to show trend
       </p>
     );
@@ -22,16 +22,25 @@ export function TrendChart({ data }: { data: TrendPoint[] }) {
     <div className="h-48">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-          <YAxis domain={[1, 5]} tickCount={5} tick={{ fontSize: 11 }} />
-          <Tooltip formatter={(value) => [(value as number).toFixed(2), "Avg Rating"]} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#71717a" }} stroke="rgba(255,255,255,0.1)" />
+          <YAxis domain={[1, 5]} tickCount={5} tick={{ fontSize: 11, fill: "#71717a" }} stroke="rgba(255,255,255,0.1)" />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "rgba(17,17,24,0.95)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: "8px",
+              color: "#e4e4e7",
+              fontSize: "12px",
+            }}
+            formatter={(value) => [(value as number).toFixed(2), "Avg Rating"]}
+          />
           <Line
             type="monotone"
             dataKey="avg_rating"
-            stroke="#6366f1"
+            stroke="#818cf8"
             strokeWidth={2}
-            dot={{ fill: "#6366f1", r: 3 }}
+            dot={{ fill: "#818cf8", r: 3 }}
           />
         </LineChart>
       </ResponsiveContainer>
