@@ -1,14 +1,18 @@
 "use client";
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { runPipeline } from "@/lib/api";
 
 type Tab = "url" | "csv";
+type AnalysisMode = "quick" | "deep";
 
-export function UrlInputForm() {
-  const router = useRouter();
+interface UrlInputFormProps {
+  onPipelineStarted?: (projectId: string, mode: AnalysisMode) => void;
+}
+
+export function UrlInputForm({ onPipelineStarted }: UrlInputFormProps) {
   const [tab, setTab] = useState<Tab>("url");
+  const [mode, setMode] = useState<AnalysisMode>("quick");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,6 +33,7 @@ export function UrlInputForm() {
         }
         formData.append("source_type", "url");
         formData.append("url", url.trim());
+        formData.append("max_reviews", mode === "quick" ? "200" : "2000");
       } else {
         if (!file) {
           setError("Please select a CSV file");
@@ -39,12 +44,10 @@ export function UrlInputForm() {
         formData.append("file", file);
       }
       const { project_id } = await runPipeline(formData);
-      try {
-        const recent = JSON.parse(localStorage.getItem("recent_analyses") || "[]");
-        recent.unshift({ id: project_id, product_name: null, review_count: 0, created_at: new Date().toISOString() });
-        localStorage.setItem("recent_analyses", JSON.stringify(recent.slice(0, 5)));
-      } catch {}
-      router.push(`/project/${project_id}?loading=true`);
+      onPipelineStarted?.(project_id, mode);
+      // Reset form
+      setUrl("");
+      setFile(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to start pipeline");
     } finally {
@@ -124,6 +127,34 @@ export function UrlInputForm() {
               <p className="text-xs text-zinc-600">Required: body/review/text column. Optional: rating, date, reviewer_name</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Analysis depth toggle — URL only */}
+      {tab === "url" && (
+        <div className="mt-4">
+          <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider mb-2">Analysis depth</p>
+          <div className="flex rounded-lg overflow-hidden bg-white/5 p-0.5">
+            {([
+              { value: "quick" as AnalysisMode, label: "Quick", desc: "~200 reviews" },
+              { value: "deep" as AnalysisMode, label: "Deep", desc: "~2,000 · experimental" },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setMode(opt.value)}
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                  mode === opt.value
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/25"
+                    : "text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {opt.label}
+                <span className={`ml-1.5 text-[10px] ${mode === opt.value ? "text-indigo-200" : "text-zinc-600"}`}>
+                  {opt.desc}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
