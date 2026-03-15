@@ -71,8 +71,10 @@ async def ingest(
     if progress_cb:
         await progress_cb("ingesting", 30, f"Storing {len(rows)} reviews in Supabase…")
 
-    # 2. Upsert — skip duplicates via ON CONFLICT DO NOTHING
-    stmt = insert(Review).values(rows).on_conflict_do_nothing(index_elements=["body_hash"])
+    # 2. Upsert — skip duplicates within the same project via composite constraint
+    stmt = insert(Review).values(rows).on_conflict_do_nothing(
+        constraint="uq_review_project_body"
+    )
     await db.execute(stmt)
     await db.commit()
 
