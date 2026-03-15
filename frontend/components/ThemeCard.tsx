@@ -23,7 +23,7 @@ export function ThemeCard({
       {/* Header: label + sentiment badge */}
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold text-zinc-100 leading-snug">
-          {theme.label || `Theme ${theme.index + 1}`}
+          {theme.label || theme.keywords.slice(0, 3).map(k => k.charAt(0).toUpperCase() + k.slice(1)).join(" & ")}
         </h3>
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0 ${sentiment.bg} ${sentiment.text}`}
