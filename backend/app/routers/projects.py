@@ -1,7 +1,8 @@
 import json
 import uuid
+from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -33,7 +34,15 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     return project
 
 
-@router.get("/projects/{project_id}/reviews", response_model=list[ReviewOut])
+_SORT_COLUMNS = {
+    "date": Review.date,
+    "rating": Review.rating,
+    "reviewer_name": Review.reviewer_name,
+    "sentiment": Review.sentiment,
+}
+
+
+@router.get("/projects/{project_id}/reviews")
 async def get_reviews(
     project_id: str,
     page: int = Query(1, ge=1),
@@ -41,18 +50,38 @@ async def get_reviews(
     sentiment: str | None = Query(None),
     rating_min: float | None = Query(None),
     rating_max: float | None = Query(None),
+    sort_by: Literal["date", "rating", "reviewer_name", "sentiment"] = Query("date"),
+    sort_dir: Literal["asc", "desc"] = Query("desc"),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Review).where(Review.project_id == project_id)
+    # Base filter
+    base = select(Review).where(Review.project_id == project_id)
     if sentiment:
-        stmt = stmt.where(Review.sentiment == sentiment)
+        base = base.where(Review.sentiment == sentiment)
     if rating_min is not None:
-        stmt = stmt.where(Review.rating >= rating_min)
+        base = base.where(Review.rating >= rating_min)
     if rating_max is not None:
-        stmt = stmt.where(Review.rating <= rating_max)
-    stmt = stmt.order_by(Review.date.desc().nullslast()).offset((page - 1) * limit).limit(limit)
+        base = base.where(Review.rating <= rating_max)
+
+    # Total count
+    count_stmt = select(func.count()).select_from(base.subquery())
+    total = (await db.execute(count_stmt)).scalar() or 0
+
+    # Sorting
+    col = _SORT_COLUMNS.get(sort_by, Review.date)
+    order = col.asc().nullslast() if sort_dir == "asc" else col.desc().nullslast()
+
+    # Paginated results
+    stmt = base.order_by(order).offset((page - 1) * limit).limit(limit)
     result = await db.execute(stmt)
-    return result.scalars().all()
+    reviews = result.scalars().all()
+
+    return {
+        "reviews": [ReviewOut.model_validate(r) for r in reviews],
+        "total": total,
+        "page": page,
+        "limit": limit,
+    }
 
 
 @router.get("/projects/{project_id}/analysis", response_model=AnalysisOut)

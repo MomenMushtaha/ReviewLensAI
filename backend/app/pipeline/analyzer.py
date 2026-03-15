@@ -116,7 +116,20 @@ async def analyze(
         stats = cluster_stats[idx]
         ratings = stats["ratings"]
         sents = stats["sentiments"]
-        dominant = max(set(sents), key=sents.count) if sents else "neutral"
+        # Determine theme sentiment: if >=20% of reviews differ from
+        # the majority, mark as "mixed" to surface nuance.
+        if not sents:
+            dominant = "neutral"
+        else:
+            counts_by_sent: dict[str, int] = {}
+            for s in sents:
+                counts_by_sent[s] = counts_by_sent.get(s, 0) + 1
+            majority = max(counts_by_sent, key=counts_by_sent.get)  # type: ignore[arg-type]
+            minority_total = len(sents) - counts_by_sent[majority]
+            if minority_total / len(sents) >= 0.2:
+                dominant = "mixed"
+            else:
+                dominant = majority
         themes.append(ThemeCluster(
             index=idx,
             label=None,  # filled by Summarizer
@@ -125,6 +138,55 @@ async def analyze(
             avg_rating=round(float(np.mean(ratings)), 2) if ratings else None,
             sentiment=dominant,
         ))
+
+    # Ensure sentiment diversity: if positive reviews exist but no theme
+    # shows positive/mixed sentiment, split them into a dedicated theme.
+    has_positive_theme = any(t.sentiment in ("positive", "mixed") for t in themes)
+    if not has_positive_theme:
+        pos_reviews_idx = [i for i, r in enumerate(reviews) if r.sentiment == "positive"]
+        if len(pos_reviews_idx) >= 2:
+            pos_bodies = [reviews[i].body for i in pos_reviews_idx]
+            pos_ratings = [reviews[i].rating for i in pos_reviews_idx if reviews[i].rating is not None]
+            # Extract keywords for the positive cluster
+            try:
+                vec = TfidfVectorizer(max_features=100, ngram_range=(1, 2), stop_words="english")
+                X = vec.fit_transform(pos_bodies)
+                centroid = X.mean(axis=0).A1
+                top_idx = centroid.argsort()[-5:][::-1]
+                pos_kws = [vec.get_feature_names_out()[j] for j in top_idx]
+            except (ValueError, IndexError):
+                pos_kws = ["positive feedback"]
+            themes.append(ThemeCluster(
+                index=len(themes),
+                label=None,
+                keywords=pos_kws,
+                review_count=len(pos_reviews_idx),
+                avg_rating=round(float(np.mean(pos_ratings)), 2) if pos_ratings else None,
+                sentiment="positive",
+            ))
+
+    has_negative_theme = any(t.sentiment in ("negative", "mixed") for t in themes)
+    if not has_negative_theme:
+        neg_reviews_idx = [i for i, r in enumerate(reviews) if r.sentiment == "negative"]
+        if len(neg_reviews_idx) >= 2:
+            neg_bodies = [reviews[i].body for i in neg_reviews_idx]
+            neg_ratings = [reviews[i].rating for i in neg_reviews_idx if reviews[i].rating is not None]
+            try:
+                vec = TfidfVectorizer(max_features=100, ngram_range=(1, 2), stop_words="english")
+                X = vec.fit_transform(neg_bodies)
+                centroid = X.mean(axis=0).A1
+                top_idx = centroid.argsort()[-5:][::-1]
+                neg_kws = [vec.get_feature_names_out()[j] for j in top_idx]
+            except (ValueError, IndexError):
+                neg_kws = ["negative feedback"]
+            themes.append(ThemeCluster(
+                index=len(themes),
+                label=None,
+                keywords=neg_kws,
+                review_count=len(neg_reviews_idx),
+                avg_rating=round(float(np.mean(neg_ratings)), 2) if neg_ratings else None,
+                sentiment="negative",
+            ))
 
     if progress_cb:
         await progress_cb("analyzing", 70, "Computing trends…")
