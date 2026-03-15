@@ -24,6 +24,8 @@ class SourceCitation(BaseModel):
     excerpt: str
     rating: float | None
     reviewer_name: str | None
+    sentiment: str | None = None
+    similarity: float | None = None
 
 
 class ChatResponse(BaseModel):
@@ -32,6 +34,7 @@ class ChatResponse(BaseModel):
     guardrail_triggered: bool
     guardrail_category: str | None
     session_id: str
+    follow_ups: list[str] = []
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -52,10 +55,10 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         db=db,
     )
 
-    # Update history (keep last 6 turns = 3 user + 3 assistant)
+    # Update history (keep last 10 turns = 5 user + 5 assistant)
     history.append({"role": "user", "content": req.message})
     history.append({"role": "assistant", "content": response_data["response"]})
-    _chat_histories[req.session_id] = history[-12:]  # 6 turns × 2
+    _chat_histories[req.session_id] = history[-20:]  # 10 turns × 2
 
     return ChatResponse(
         response=response_data["response"],
@@ -63,4 +66,5 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         guardrail_triggered=response_data["guardrail_triggered"],
         guardrail_category=response_data.get("guardrail_category"),
         session_id=req.session_id,
+        follow_ups=response_data.get("follow_ups", []),
     )
