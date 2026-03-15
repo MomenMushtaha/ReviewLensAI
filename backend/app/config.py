@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     scraper_concurrency: int = 3
 
     # ML
-    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_model: str = "text-embedding-3-small"
+    embedding_dimensions: int = 384
     similarity_threshold: float = 0.20
     max_chat_history_turns: int = 6
 
