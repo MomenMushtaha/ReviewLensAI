@@ -2,7 +2,7 @@
 
 **Review Intelligence Portal** — Paste a Trustpilot URL or upload a CSV to get AI-powered sentiment analysis, theme clustering, rating trends, and a guardrailed Q&A chat assistant. Built with FastAPI, Next.js, and OpenAI.
 
-**Live:** [v0-review-lens-ai.vercel.app](https://v0-review-lens-ai.vercel.app) | **API:** [reviewlens-api.onrender.com](https://reviewlens-api.onrender.com/docs)
+**Live:** [frontend-ten-virid-65.vercel.app](https://frontend-ten-virid-65.vercel.app) | **API:** [reviewlens-api.onrender.com](https://reviewlens-api.onrender.com/docs)
 
 > Built entirely by [Claude Code](https://claude.ai/claude-code) (Anthropic's AI coding agent).
 
@@ -84,31 +84,3 @@ npm install
 cp .env.local.example .env.local   # set NEXT_PUBLIC_API_URL
 npm run dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-## Environment Variables
-
-### Backend (`backend/.env`)
-
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string (`postgresql+asyncpg://...`) |
-| `OPENAI_API_KEY` | OpenAI API key |
-| `OPENAI_MODEL` | Model to use (default: `gpt-4o-mini`) |
-| `ALLOWED_ORIGINS` | Comma-separated CORS origins |
-| `SCRAPER_MAX_PAGES` | Max Trustpilot pages to scrape (default: `10`) |
-| `SCRAPER_CONCURRENCY` | Concurrent scrape requests (default: `3`) |
-| `EMBEDDING_MODEL` | Sentence transformer model (default: `all-MiniLM-L6-v2`) |
-| `SIMILARITY_THRESHOLD` | RAG retrieval threshold (default: `0.20`) |
-
-### Frontend (`frontend/.env.local`)
-
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | Backend API URL (default: `http://localhost:8000`) |
-
-## Deployment
-
-- **Backend** — Render free tier (Docker). See `render.yaml` and `backend/Dockerfile`.
-- **Frontend** — Vercel with Root Directory set to `frontend/`.
