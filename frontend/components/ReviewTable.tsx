@@ -15,7 +15,7 @@ const SENTIMENT_VARIANTS: Record<string, "positive" | "negative" | "neutral"> = 
 type SortKey = "date" | "rating" | "reviewer_name" | "sentiment";
 type SortDir = "asc" | "desc";
 
-const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
+const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "reviewer_name", label: "Reviewer" },
   { key: "rating", label: "Rating" },
   { key: "sentiment", label: "Sentiment" },
@@ -24,9 +24,9 @@ const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
 
 function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
   return (
-    <span className={`ml-1 inline-flex flex-col text-[8px] leading-none ${active ? "text-indigo-600" : "text-gray-300"}`}>
-      <span className={active && dir === "asc" ? "text-indigo-600" : "text-gray-300"}>▲</span>
-      <span className={active && dir === "desc" ? "text-indigo-600" : "text-gray-300"}>▼</span>
+    <span className={`ml-1 inline-flex flex-col text-[8px] leading-none ${active ? "text-indigo-400" : "text-zinc-700"}`}>
+      <span className={active && dir === "asc" ? "text-indigo-400" : "text-zinc-700"}>▲</span>
+      <span className={active && dir === "desc" ? "text-indigo-400" : "text-zinc-700"}>▼</span>
     </span>
   );
 }
@@ -88,16 +88,16 @@ export function ReviewTable({ projectId }: { projectId: string }) {
               if (s && sortBy === "sentiment") { setSortBy("date"); setSortDir("desc"); }
               setPage(1);
             }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
               sentiment === s
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/25"
+                : "bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300 border border-white/10"
             }`}
           >
             {s || "All"}
           </button>
         ))}
-        <span className="mx-2 text-gray-300">|</span>
+        <span className="mx-2 text-zinc-700">|</span>
         {[null, 1, 2, 3, 4, 5].map((stars) => (
           <button
             key={stars ?? "all-stars"}
@@ -106,29 +106,29 @@ export function ReviewTable({ projectId }: { projectId: string }) {
               if (stars !== null && sortBy === "rating") { setSortBy("date"); setSortDir("desc"); }
               setPage(1);
             }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
               ratingFilter === stars
-                ? "bg-yellow-500 text-white"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                ? "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
+                : "bg-white/5 text-zinc-500 hover:bg-white/10 hover:text-zinc-300 border border-white/10"
             }`}
           >
             {stars === null ? "All" : "★".repeat(stars)}
           </button>
         ))}
-        <span className="ml-auto text-xs text-gray-400">{total} reviews</span>
+        <span className="ml-auto text-xs text-zinc-500">{total} reviews</span>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border border-gray-200 overflow-hidden">
+      <div className="glass rounded-xl overflow-hidden">
         {!reviews?.length && !loading ? (
-          <div className="p-8 text-center text-sm text-gray-400">No reviews found</div>
+          <div className="p-8 text-center text-sm text-zinc-500">No reviews found</div>
         ) : !reviews?.length && loading ? (
-          <div className="p-8 text-center text-sm text-gray-400">Loading…</div>
+          <div className="p-8 text-center text-sm text-zinc-500">Loading...</div>
         ) : (
           <div className="relative">
             <div className={`transition-opacity duration-200 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wide">
+                <thead className="bg-white/3 text-left text-xs text-zinc-500 uppercase tracking-wide">
                   <tr>
                     {COLUMNS.map((col) => {
                       const disabled =
@@ -140,8 +140,8 @@ export function ReviewTable({ projectId }: { projectId: string }) {
                           onClick={disabled ? undefined : () => handleSort(col.key)}
                           className={`px-4 py-3 select-none transition-colors ${
                             disabled
-                              ? "text-gray-300"
-                              : "cursor-pointer hover:text-gray-700"
+                              ? "text-zinc-700"
+                              : "cursor-pointer hover:text-zinc-300"
                           }`}
                         >
                           <span className="inline-flex items-center">
@@ -154,19 +154,19 @@ export function ReviewTable({ projectId }: { projectId: string }) {
                     <th className="px-4 py-3 w-1/2">Review</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-white/5">
                   {reviews.map((r) => (
                     <tr
                       key={r.id}
-                      className="hover:bg-gray-50 cursor-pointer transition-all duration-200"
+                      className="hover:bg-white/3 cursor-pointer transition-all duration-200"
                       onClick={() => setExpanded(expanded === r.id ? null : r.id)}
                     >
-                      <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                      <td className="px-4 py-3 font-medium text-zinc-200 whitespace-nowrap">
                         {r.reviewer_name || "Anonymous"}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         {r.rating ? (
-                          <span className="text-yellow-500">{"★".repeat(Math.round(r.rating))}</span>
+                          <span className="text-amber-400">{"★".repeat(Math.round(r.rating))}</span>
                         ) : "—"}
                       </td>
                       <td className="px-4 py-3">
@@ -176,8 +176,8 @@ export function ReviewTable({ projectId }: { projectId: string }) {
                           </Badge>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{formatDate(r.date)}</td>
-                      <td className="px-4 py-3 text-gray-600">
+                      <td className="px-4 py-3 text-zinc-500 whitespace-nowrap">{formatDate(r.date)}</td>
+                      <td className="px-4 py-3 text-zinc-400">
                         <span className={expanded === r.id ? "" : "line-clamp-2"}>{r.body}</span>
                       </td>
                     </tr>
@@ -192,23 +192,11 @@ export function ReviewTable({ projectId }: { projectId: string }) {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => p - 1)}
-            disabled={page === 1}
-          >
+          <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={page === 1}>
             Previous
           </Button>
-          <span className="text-xs text-gray-500">
-            Page {page} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={page === totalPages}
-          >
+          <span className="text-xs text-zinc-500">Page {page} of {totalPages}</span>
+          <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page === totalPages}>
             Next
           </Button>
         </div>
