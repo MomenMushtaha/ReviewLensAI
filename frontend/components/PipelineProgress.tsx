@@ -24,9 +24,9 @@ export function PipelineProgress({ projectId }: { projectId: string }) {
 
   if (state.status === "error") {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-        <p className="text-sm font-medium text-red-700">Pipeline failed</p>
-        <p className="mt-1 text-sm text-red-600">{state.message}</p>
+      <div className="glass rounded-xl border-red-500/20 p-6">
+        <p className="text-sm font-medium text-red-400">Pipeline failed</p>
+        <p className="mt-1 text-sm text-red-300">{state.message}</p>
       </div>
     );
   }
@@ -37,14 +37,14 @@ export function PipelineProgress({ projectId }: { projectId: string }) {
     state.status === "running"
       ? state.message
       : state.status === "complete"
-      ? "Pipeline complete! Redirecting…"
-      : "Connecting…";
+      ? "Pipeline complete! Redirecting..."
+      : "Connecting...";
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-6">
+    <div className="glass rounded-xl p-6 space-y-6 glow-sm">
       <div>
-        <h2 className="text-base font-semibold text-gray-900">Analyzing reviews…</h2>
-        <p className="mt-1 text-sm text-gray-500">{message}</p>
+        <h2 className="text-base font-semibold text-zinc-100">Analyzing reviews...</h2>
+        <p className="mt-1 text-sm text-zinc-500">{message}</p>
       </div>
 
       {/* Stage pills */}
@@ -57,12 +57,12 @@ export function PipelineProgress({ projectId }: { projectId: string }) {
           return (
             <span
               key={s}
-              className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors ${
+              className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-all ${
                 done
-                  ? "bg-emerald-100 text-emerald-700"
+                  ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20"
                   : active
-                  ? "bg-indigo-100 text-indigo-700 animate-pulse"
-                  : "bg-gray-100 text-gray-400"
+                  ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 animate-pulse"
+                  : "bg-white/5 text-zinc-600 border border-white/10"
               }`}
             >
               {done ? "✓ " : ""}{s}
@@ -72,13 +72,13 @@ export function PipelineProgress({ projectId }: { projectId: string }) {
       </div>
 
       {/* Progress bar */}
-      <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+      <div className="h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
         <div
-          className="h-full rounded-full bg-indigo-600 transition-all duration-500"
+          className="h-full rounded-full bg-indigo-500 transition-all duration-500 shadow-lg shadow-indigo-500/30"
           style={{ width: `${progress}%` }}
         />
       </div>
-      <p className="text-xs text-gray-400 text-right">{progress}%</p>
+      <p className="text-xs text-zinc-600 text-right">{progress}%</p>
     </div>
   );
 }

@@ -57,7 +57,7 @@ export default function ProjectPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen mesh-gradient">
         <Header project={null} />
         <main className="mx-auto max-w-3xl px-6 py-12">
           <PipelineProgress projectId={projectId} />
@@ -68,12 +68,12 @@ export default function ProjectPage() {
 
   if (fetchError) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen mesh-gradient">
         <Header project={null} />
         <main className="mx-auto max-w-3xl px-6 py-12">
-          <div className="rounded-xl border border-red-200 bg-red-50 p-6">
-            <p className="text-sm font-medium text-red-700">Error loading project</p>
-            <p className="mt-1 text-sm text-red-600">{fetchError}</p>
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-6">
+            <p className="text-sm font-medium text-red-400">Error loading project</p>
+            <p className="mt-1 text-sm text-red-300">{fetchError}</p>
           </div>
         </main>
       </div>
@@ -82,13 +82,13 @@ export default function ProjectPage() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen mesh-gradient">
         <Header project={null} />
         <main className="mx-auto max-w-3xl px-6 py-12">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/2" />
-            <div className="h-4 bg-gray-200 rounded w-1/4" />
-            <div className="h-64 bg-gray-200 rounded" />
+            <div className="h-8 bg-white/10 rounded w-1/2" />
+            <div className="h-4 bg-white/10 rounded w-1/4" />
+            <div className="h-64 bg-white/10 rounded" />
           </div>
         </main>
       </div>
@@ -96,7 +96,7 @@ export default function ProjectPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen mesh-gradient">
       <Header project={project} />
       <main className="mx-auto max-w-6xl px-6 py-8">
         <Tabs defaultValue="overview">
@@ -140,7 +140,7 @@ export default function ProjectPage() {
               </>
             ) : (
               <Card>
-                <CardContent className="py-12 text-center text-sm text-gray-400">
+                <CardContent className="py-12 text-center text-sm text-zinc-500">
                   Analysis not yet available
                 </CardContent>
               </Card>
@@ -158,7 +158,7 @@ export default function ProjectPage() {
               <div className="space-y-6">
                 {/* Summary header */}
                 <div className="flex flex-wrap items-center gap-4">
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-zinc-100">
                     {analysis.themes.length} Themes Discovered
                   </h2>
                   <div className="flex gap-2">
@@ -169,10 +169,10 @@ export default function ProjectPage() {
                       }, {})
                     ).map(([sentiment, count]) => {
                       const colors: Record<string, string> = {
-                        positive: "bg-emerald-100 text-emerald-700",
-                        negative: "bg-red-100 text-red-700",
-                        neutral: "bg-gray-100 text-gray-600",
-                        mixed: "bg-amber-100 text-amber-700",
+                        positive: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20",
+                        negative: "bg-red-500/15 text-red-300 border border-red-500/20",
+                        neutral: "bg-white/5 text-zinc-400 border border-white/10",
+                        mixed: "bg-amber-500/15 text-amber-300 border border-amber-500/20",
                       };
                       return (
                         <span
@@ -201,7 +201,7 @@ export default function ProjectPage() {
               </div>
             ) : (
               <Card>
-                <CardContent className="py-12 text-center text-sm text-gray-400">
+                <CardContent className="py-12 text-center text-sm text-zinc-500">
                   No themes available
                 </CardContent>
               </Card>
@@ -220,22 +220,24 @@ export default function ProjectPage() {
 
 function Header({ project }: { project: Project | null }) {
   return (
-    <header className="border-b border-gray-100 bg-white">
+    <header className="border-b border-white/5">
       <div className="mx-auto max-w-6xl px-6 py-4 flex items-center gap-3">
-        <a
-          href="/"
-          className="text-lg font-bold text-gray-900 hover:text-indigo-600 transition-colors"
-        >
-          ReviewLens AI
+        <a href="/" className="flex items-center gap-2 group">
+          <div className="h-7 w-7 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+            <div className="h-3 w-3 rounded-sm bg-indigo-400" />
+          </div>
+          <span className="text-lg font-semibold text-white tracking-tight group-hover:text-indigo-300 transition-colors">
+            ReviewLens
+          </span>
         </a>
         {project && (
           <>
-            <span className="text-gray-300">/</span>
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-zinc-700">/</span>
+            <span className="text-sm font-medium text-zinc-300">
               {project.product_name || "Analysis"}
             </span>
             <Badge variant="outline" className="capitalize">{project.platform}</Badge>
-            <span className="text-xs text-gray-400 ml-auto">{project.review_count} reviews</span>
+            <span className="text-xs text-zinc-500 ml-auto">{project.review_count} reviews</span>
           </>
         )}
       </div>

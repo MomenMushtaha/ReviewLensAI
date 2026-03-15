@@ -27,25 +27,27 @@ export function ChatPanel({ projectId }: { projectId: string }) {
   ];
 
   return (
-    <div className="flex h-[600px] flex-col rounded-xl border border-gray-200 bg-white overflow-hidden">
+    <div className="flex h-[600px] flex-col glass rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-gray-100 bg-gray-50 px-4 py-3">
-        <span className="text-lg">💬</span>
-        <span className="text-sm font-medium text-gray-700">ReviewLens AI</span>
-        <Badge variant="outline" className="ml-auto text-xs">Scope-locked to ingested reviews</Badge>
+      <div className="flex items-center gap-2 border-b border-white/5 bg-white/3 px-4 py-3">
+        <div className="h-6 w-6 rounded-md bg-indigo-500/20 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <span className="text-sm font-medium text-zinc-300">ReviewLens AI</span>
+        <Badge variant="outline" className="ml-auto text-[10px]">Scope-locked to reviews</Badge>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="space-y-3">
-            <p className="text-sm text-gray-500 text-center">Ask anything about the ingested reviews.</p>
+            <p className="text-sm text-zinc-500 text-center">Ask anything about the ingested reviews.</p>
             <div className="grid grid-cols-2 gap-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => send(s)}
-                  className="rounded-lg border border-gray-200 p-2.5 text-left text-xs text-gray-600 hover:bg-gray-50 hover:border-indigo-300 transition-colors"
+                  className="rounded-lg border border-white/10 bg-white/3 p-2.5 text-left text-xs text-zinc-400 hover:bg-white/5 hover:border-indigo-500/30 hover:text-zinc-300 transition-all"
                 >
                   {s}
                 </button>
@@ -57,7 +59,7 @@ export function ChatPanel({ projectId }: { projectId: string }) {
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className="max-w-[80%] space-y-1">
               {msg.guardrailTriggered && (
-                <div className="flex items-center gap-1 text-xs text-amber-600">
+                <div className="flex items-center gap-1 text-xs text-amber-400">
                   <span>🛡️</span>
                   <span>Scope guard triggered</span>
                 </div>
@@ -65,8 +67,8 @@ export function ChatPanel({ projectId }: { projectId: string }) {
               <div
                 className={`rounded-2xl px-4 py-2.5 text-sm ${
                   msg.role === "user"
-                    ? "bg-indigo-600 text-white rounded-br-sm whitespace-pre-wrap"
-                    : "bg-gray-100 text-gray-800 rounded-bl-sm"
+                    ? "bg-indigo-600 text-white rounded-br-sm whitespace-pre-wrap shadow-lg shadow-indigo-500/20"
+                    : "bg-white/5 text-zinc-300 rounded-bl-sm border border-white/5"
                 }`}
               >
                 {msg.role === "user" ? (
@@ -75,7 +77,7 @@ export function ChatPanel({ projectId }: { projectId: string }) {
                   <ReactMarkdown
                     components={{
                       p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                      strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                      strong: ({ children }) => <strong className="font-semibold text-zinc-100">{children}</strong>,
                       ol: ({ children }) => <ol className="list-decimal list-outside ml-4 mb-2 space-y-1">{children}</ol>,
                       ul: ({ children }) => <ul className="list-disc list-outside ml-4 mb-2 space-y-1">{children}</ul>,
                       li: ({ children }) => <li className="pl-1">{children}</li>,
@@ -88,10 +90,10 @@ export function ChatPanel({ projectId }: { projectId: string }) {
               {msg.sources && msg.sources.length > 0 && (
                 <div className="space-y-1 ml-1">
                   {msg.sources.slice(0, 2).map((src, si) => (
-                    <div key={si} className="rounded-lg border border-gray-100 bg-gray-50 p-2 text-xs text-gray-500">
-                      <span className="font-medium text-gray-700">{src.reviewer_name || "Anonymous"}</span>
+                    <div key={si} className="rounded-lg border border-white/5 bg-white/3 p-2 text-xs text-zinc-500">
+                      <span className="font-medium text-zinc-300">{src.reviewer_name || "Anonymous"}</span>
                       {src.rating && (
-                        <span className="ml-1 text-yellow-500">★{src.rating.toFixed(0)}</span>
+                        <span className="ml-1 text-amber-400">★{src.rating.toFixed(0)}</span>
                       )}
                       <p className="mt-0.5 line-clamp-2">{src.excerpt}</p>
                     </div>
@@ -103,8 +105,8 @@ export function ChatPanel({ projectId }: { projectId: string }) {
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3 text-gray-400 text-sm">
-              <span className="animate-pulse">Thinking…</span>
+            <div className="bg-white/5 border border-white/5 rounded-2xl rounded-bl-sm px-4 py-3 text-zinc-500 text-sm">
+              <span className="animate-pulse">Thinking...</span>
             </div>
           </div>
         )}
@@ -112,14 +114,14 @@ export function ChatPanel({ projectId }: { projectId: string }) {
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-100 p-3 flex gap-2">
+      <div className="border-t border-white/5 p-3 flex gap-2">
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="Ask about the reviews… (Enter to send)"
+          placeholder="Ask about the reviews... (Enter to send)"
           rows={1}
-          className="flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="flex-1 resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-indigo-500/50 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
         />
         <Button onClick={handleSend} disabled={!input.trim() || loading} size="md">Send</Button>
       </div>
