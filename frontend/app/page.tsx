@@ -54,11 +54,6 @@ export default function HomePage() {
     } catch {}
   }, []);
 
-  const updateLocalStorage = useCallback((updated: RecentAnalysis[]) => {
-    setRecent(updated);
-    localStorage.setItem("recent_analyses", JSON.stringify(updated));
-  }, []);
-
   const handlePipelineStarted = useCallback((projectId: string, mode: "quick" | "deep") => {
     const entry: RecentAnalysis = {
       id: projectId,
