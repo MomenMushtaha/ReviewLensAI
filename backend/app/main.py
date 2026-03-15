@@ -10,10 +10,13 @@ import subprocess
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Run Alembic migrations using the same Python interpreter
-    venv_bin = os.path.dirname(sys.executable)
-    alembic_cmd = os.path.join(venv_bin, "alembic")
-    subprocess.run([alembic_cmd, "upgrade", "head"], check=True)
+    # Run Alembic migrations (best-effort — don't crash if DB is temporarily unavailable)
+    try:
+        venv_bin = os.path.dirname(sys.executable)
+        alembic_cmd = os.path.join(venv_bin, "alembic")
+        subprocess.run([alembic_cmd, "upgrade", "head"], check=True)
+    except Exception as e:
+        print(f"WARNING: Alembic migration failed: {e}", flush=True)
 
     # Load sentence-transformers embedder
     from sentence_transformers import SentenceTransformer
