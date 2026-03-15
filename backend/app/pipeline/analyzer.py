@@ -1,4 +1,6 @@
 import json
+import logging
+import time
 import uuid
 from collections import defaultdict
 
@@ -13,6 +15,8 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from app.models.analysis import Analysis
 from app.models.review import Review
 from app.schemas.analysis import ThemeCluster, TrendPoint
+
+logger = logging.getLogger(__name__)
 
 _vader = SentimentIntensityAnalyzer()
 
@@ -62,6 +66,7 @@ async def analyze(
     db: AsyncSession,
     progress_cb=None,
 ) -> dict:
+    logger.info("Analysis start: project=%s", project_id)
     if progress_cb:
         await progress_cb("analyzing", 10, "Loading reviews…")
 
@@ -69,12 +74,16 @@ async def analyze(
     reviews = result.scalars().all()
 
     if not reviews:
+        logger.error("No reviews found: project=%s", project_id)
         raise ValueError(f"No reviews found for project {project_id}")
+
+    logger.info("Loaded %d reviews: project=%s", len(reviews), project_id)
 
     if progress_cb:
         await progress_cb("analyzing", 25, f"Running sentiment analysis on {len(reviews)} reviews…")
 
     # 1. Sentiment per review
+    sentiment_start = time.monotonic()
     for review in reviews:
         sentiment = _vader_sentiment(review.body, review.rating)
         review.sentiment = sentiment
@@ -85,6 +94,10 @@ async def analyze(
     for r in reviews:
         sentiment_counts[r.sentiment or "neutral"] += 1
     sentiment_distribution = dict(sentiment_counts)
+    logger.info(
+        "Sentiment analysis done: project=%s distribution=%s elapsed=%.2fs",
+        project_id, sentiment_distribution, time.monotonic() - sentiment_start,
+    )
 
     # 3. Rating distribution
     rating_counts: dict[str, int] = defaultdict(int)
@@ -98,8 +111,13 @@ async def analyze(
         await progress_cb("analyzing", 50, "Clustering themes…")
 
     # 4. Theme clustering
+    cluster_start = time.monotonic()
     bodies = [r.body for r in reviews]
     labels, keywords_per_cluster = _cluster_themes(bodies)
+    logger.info(
+        "Theme clustering done: project=%s clusters=%d elapsed=%.2fs",
+        project_id, len(keywords_per_cluster), time.monotonic() - cluster_start,
+    )
 
     cluster_stats: dict[int, dict] = defaultdict(lambda: {
         "count": 0, "ratings": [], "sentiments": []
@@ -138,6 +156,12 @@ async def analyze(
             sentiment=dominant,
         ))
 
+    logger.info(
+        "Theme stats: project=%s themes=%d keywords=%s",
+        project_id, len(themes),
+        {t.index: t.keywords[:3] for t in themes},
+    )
+
     # Ensure sentiment diversity: if positive reviews exist but no theme
     # shows positive/mixed sentiment, split them into a dedicated theme.
     has_positive_theme = any(t.sentiment in ("positive", "mixed") for t in themes)
@@ -163,6 +187,7 @@ async def analyze(
                 avg_rating=round(float(np.mean(pos_ratings)), 2) if pos_ratings else None,
                 sentiment="positive",
             ))
+            logger.info("Added synthetic positive theme: project=%s reviews=%d", project_id, len(pos_reviews_idx))
 
     has_negative_theme = any(t.sentiment in ("negative", "mixed") for t in themes)
     if not has_negative_theme:
@@ -186,11 +211,13 @@ async def analyze(
                 avg_rating=round(float(np.mean(neg_ratings)), 2) if neg_ratings else None,
                 sentiment="negative",
             ))
+            logger.info("Added synthetic negative theme: project=%s reviews=%d", project_id, len(neg_reviews_idx))
 
     if progress_cb:
         await progress_cb("analyzing", 70, "Computing trends…")
 
     # 5. Trend over time
+    trend_start = time.monotonic()
     trend_data: list[TrendPoint] = []
     dated = [(r.date, r.rating) for r in reviews if r.date and r.rating is not None]
     if dated:
@@ -202,6 +229,10 @@ async def analyze(
                 TrendPoint(month=row["month"], avg_rating=round(row["avg_rating"], 2), count=int(row["count"]))
                 for _, row in grouped.iterrows()
             ]
+    logger.info(
+        "Trend computation done: project=%s dated_reviews=%d months=%d elapsed=%.2fs",
+        project_id, len(dated), len(trend_data), time.monotonic() - trend_start,
+    )
 
     # 6. Top/bottom reviews
     sorted_reviews = sorted(reviews, key=lambda r: (r.rating or 0), reverse=True)
@@ -229,8 +260,10 @@ async def analyze(
         await db.execute(
             update(Analysis).where(Analysis.project_id == project_id).values(**analysis_data)
         )
+        logger.info("Updated existing analysis row: project=%s", project_id)
     else:
         db.add(Analysis(id=analysis_id, project_id=project_id, **analysis_data))
+        logger.info("Created new analysis row: project=%s id=%s", project_id, analysis_id)
     await db.commit()
 
     if progress_cb:
