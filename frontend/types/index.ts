@@ -71,15 +71,20 @@ export interface Analysis {
   created_at: string;
 }
 
+export interface ChatSource {
+  review_id: string;
+  excerpt: string;
+  rating: number | null;
+  reviewer_name: string | null;
+  sentiment?: string | null;
+  similarity?: number | null;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-  sources?: Array<{
-    review_id: string;
-    excerpt: string;
-    rating: number | null;
-    reviewer_name: string | null;
-  }>;
+  sources?: ChatSource[];
   guardrailTriggered?: boolean;
   guardrailCategory?: string | null;
+  followUps?: string[];
 }
