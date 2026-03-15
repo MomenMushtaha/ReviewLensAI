@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db, AsyncSessionLocal
 from app.models.project import Project
-from app.pipeline.orchestrator import run_pipeline, get_or_create_queue, pop_queue
+from app.pipeline.orchestrator import run_pipeline, get_or_create_queue, pop_queue, cancel_pipeline
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -62,6 +62,13 @@ async def _run_pipeline_bg(project_id: str, source_type: str, url: str | None, c
         logger.info("Background task completed: project=%s", project_id)
     except Exception:
         logger.exception("Background task FAILED: project=%s", project_id)
+
+
+@router.post("/pipeline/cancel/{project_id}")
+async def cancel(project_id: str):
+    if cancel_pipeline(project_id):
+        return {"status": "cancelled"}
+    raise HTTPException(status_code=404, detail="No active pipeline for this project")
 
 
 @router.get("/pipeline/stream/{project_id}")

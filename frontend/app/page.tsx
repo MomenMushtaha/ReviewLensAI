@@ -1,14 +1,16 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { UrlInputForm } from "@/components/UrlInputForm";
 import { AnalysisItem } from "@/components/AnalysisItem";
+import { getProject } from "@/lib/api";
 
-interface RecentAnalysis {
+export interface RecentAnalysis {
   id: string;
   product_name: string | null;
   review_count: number;
   created_at: string;
+  mode?: "quick" | "deep";
+  source_url?: string;
 }
 
 const FEATURES = [
@@ -43,23 +45,45 @@ const FEATURES = [
 ];
 
 export default function HomePage() {
-  const router = useRouter();
   const [recent, setRecent] = useState<RecentAnalysis[]>([]);
   const [activePipelines, setActivePipelines] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem("recent_analyses") || "[]");
+      const stored: RecentAnalysis[] = JSON.parse(localStorage.getItem("recent_analyses") || "[]");
       setRecent(stored);
+
+      // Hydrate any entries missing a product name from the API
+      const needsName = stored.filter((r) => !r.product_name);
+      if (needsName.length > 0) {
+        Promise.allSettled(
+          needsName.map((r) => getProject(r.id).then((p) => ({ id: r.id, name: p.product_name as string | null })))
+        ).then((results) => {
+          const nameMap = new Map<string, string>();
+          for (const result of results) {
+            if (result.status === "fulfilled" && result.value.name) {
+              nameMap.set(result.value.id, result.value.name);
+            }
+          }
+          if (nameMap.size === 0) return;
+          setRecent((prev) => {
+            const updated = prev.map((r) => nameMap.has(r.id) ? { ...r, product_name: nameMap.get(r.id)! } : r);
+            localStorage.setItem("recent_analyses", JSON.stringify(updated));
+            return updated;
+          });
+        });
+      }
     } catch {}
   }, []);
 
-  const handlePipelineStarted = useCallback((projectId: string, mode: "quick" | "deep") => {
+  const handlePipelineStarted = useCallback((projectId: string, mode: "quick" | "deep", sourceUrl?: string) => {
     const entry: RecentAnalysis = {
       id: projectId,
       product_name: null,
       review_count: 0,
       created_at: new Date().toISOString(),
+      mode,
+      source_url: sourceUrl,
     };
     setRecent((prev) => {
       const updated = [entry, ...prev].slice(0, 10);
@@ -67,14 +91,9 @@ export default function HomePage() {
       return updated;
     });
 
-    if (mode === "quick") {
-      // Quick mode: navigate to project page with loading indicator (old behavior)
-      router.push(`/project/${projectId}?loading=true`);
-    } else {
-      // Deep mode: track inline progress on homepage
-      setActivePipelines((prev) => new Set(prev).add(projectId));
-    }
-  }, [router]);
+    // Both modes: track inline progress on homepage
+    setActivePipelines((prev) => new Set(prev).add(projectId));
+  }, []);
 
   const handlePipelineComplete = useCallback((projectId: string, productName: string | null, reviewCount: number) => {
     setActivePipelines((prev) => {
@@ -156,7 +175,7 @@ export default function HomePage() {
 
         {/* Form */}
         <div className="glass rounded-2xl p-8 glow-accent">
-          <UrlInputForm onPipelineStarted={handlePipelineStarted} />
+          <UrlInputForm onPipelineStarted={handlePipelineStarted} existingAnalyses={recent} />
         </div>
 
         {/* Features */}
@@ -189,6 +208,7 @@ export default function HomePage() {
                   id={r.id}
                   productName={r.product_name}
                   createdAt={r.created_at}
+                  mode={r.mode}
                   isActive={activePipelines.has(r.id)}
                   onComplete={handlePipelineComplete}
                   onError={handlePipelineError}
