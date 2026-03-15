@@ -2,15 +2,28 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { runPipeline } from "@/lib/api";
+import type { RecentAnalysis } from "@/app/page";
 
 type Tab = "url" | "csv";
 type AnalysisMode = "quick" | "deep";
 
-interface UrlInputFormProps {
-  onPipelineStarted?: (projectId: string) => void;
+function normalizeUrl(url: string): string {
+  return url.replace(/\?.*$/, "").replace(/\/+$/, "").toLowerCase();
 }
 
-export function UrlInputForm({ onPipelineStarted }: UrlInputFormProps) {
+function extractDomain(url: string): string {
+  // "https://www.trustpilot.com/review/airbnb.com" → "airbnb"
+  const match = url.match(/trustpilot\.com\/review\/([^/?]+)/i);
+  if (!match) return "";
+  return match[1].replace(/\.\w+$/, "").toLowerCase(); // strip TLD
+}
+
+interface UrlInputFormProps {
+  onPipelineStarted?: (projectId: string, mode: AnalysisMode, sourceUrl?: string) => void;
+  existingAnalyses?: RecentAnalysis[];
+}
+
+export function UrlInputForm({ onPipelineStarted, existingAnalyses = [] }: UrlInputFormProps) {
   const [tab, setTab] = useState<Tab>("url");
   const [mode, setMode] = useState<AnalysisMode>("quick");
   const [url, setUrl] = useState("");
@@ -31,6 +44,22 @@ export function UrlInputForm({ onPipelineStarted }: UrlInputFormProps) {
           setLoading(false);
           return;
         }
+        // Check for duplicate analysis with same URL and mode
+        const normalized = normalizeUrl(url.trim());
+        const domain = extractDomain(url.trim());
+        const duplicate = existingAnalyses.find(
+          (a) => a.mode === mode && (
+            (a.source_url && normalizeUrl(a.source_url) === normalized) ||
+            (domain && a.product_name && a.product_name.toLowerCase() === domain)
+          )
+        );
+        if (duplicate) {
+          const name = duplicate.product_name || "this service";
+          const modeLabel = mode === "deep" ? "deep" : "quick";
+          setError(`A ${modeLabel} analysis for ${name} already exists. Delete it first or try a different mode.`);
+          setLoading(false);
+          return;
+        }
         formData.append("source_type", "url");
         formData.append("url", url.trim());
         formData.append("max_reviews", mode === "quick" ? "200" : "2000");
@@ -44,7 +73,7 @@ export function UrlInputForm({ onPipelineStarted }: UrlInputFormProps) {
         formData.append("file", file);
       }
       const { project_id } = await runPipeline(formData);
-      onPipelineStarted?.(project_id);
+      onPipelineStarted?.(project_id, mode, tab === "url" ? url.trim() : undefined);
       // Reset form
       setUrl("");
       setFile(null);
@@ -136,20 +165,23 @@ export function UrlInputForm({ onPipelineStarted }: UrlInputFormProps) {
           <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider mb-2">Analysis depth</p>
           <div className="flex rounded-lg overflow-hidden bg-white/5 p-0.5">
             {([
-              { value: "quick" as AnalysisMode, label: "Quick", desc: "~200 reviews" },
-              { value: "deep" as AnalysisMode, label: "Deep", desc: "~2,000 · experimental" },
+              { value: "quick" as AnalysisMode, label: "Quick", desc: "~200 reviews", disabled: false },
+              { value: "deep" as AnalysisMode, label: "Deep", desc: "~2,000 · coming soon", disabled: true },
             ]).map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => setMode(opt.value)}
+                onClick={() => !opt.disabled && setMode(opt.value)}
+                disabled={opt.disabled}
                 className={`flex-1 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                  mode === opt.value
-                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/25"
-                    : "text-zinc-500 hover:text-zinc-300"
+                  opt.disabled
+                    ? "text-zinc-600 cursor-not-allowed opacity-50"
+                    : mode === opt.value
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/25"
+                      : "text-zinc-500 hover:text-zinc-300"
                 }`}
               >
                 {opt.label}
-                <span className={`ml-1.5 text-[10px] ${mode === opt.value ? "text-indigo-200" : "text-zinc-600"}`}>
+                <span className={`ml-1.5 text-[10px] ${opt.disabled ? "text-zinc-700" : mode === opt.value ? "text-indigo-200" : "text-zinc-600"}`}>
                   {opt.desc}
                 </span>
               </button>

@@ -1,9 +1,9 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePipelineSSE } from "@/hooks/usePipelineSSE";
 import { formatDate } from "@/lib/utils";
-import { deleteProject } from "@/lib/api";
+import { deleteProject, cancelPipeline } from "@/lib/api";
 
 const STAGES = ["scraping", "ingesting", "analyzing", "summarizing"];
 
@@ -11,10 +11,18 @@ function stageIndex(stage: string): number {
   return STAGES.indexOf(stage);
 }
 
+function formatElapsed(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  return `${m}m ${s}s`;
+}
+
 interface AnalysisItemProps {
   id: string;
   productName: string | null;
   createdAt: string;
+  mode?: "quick" | "deep";
   isActive: boolean;
   onComplete: (projectId: string, productName: string | null, reviewCount: number) => void;
   onError: (projectId: string) => void;
@@ -31,10 +39,23 @@ function ActivePipeline({
   onError: () => void;
 }) {
   const state = usePipelineSSE(projectId);
+  const [startTime] = useState(() => Date.now());
+  const [elapsed, setElapsed] = useState(0);
+  const [stopping, setStopping] = useState(false);
+
+  const handleStop = async () => {
+    setStopping(true);
+    try { await cancelPipeline(projectId); } catch {}
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => setElapsed((Date.now() - startTime) / 1000), 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
 
   useEffect(() => {
     if (state.status === "complete") {
-      onComplete(null, state.reviewCount);
+      onComplete(state.productName, state.reviewCount);
     }
     if (state.status === "error") {
       onError();
@@ -47,32 +68,75 @@ function ActivePipeline({
     state.status === "running"
       ? state.message
       : state.status === "complete"
-      ? "Complete! Click to view results."
+      ? `Pipeline complete — ${formatElapsed(elapsed)}`
       : state.status === "error"
       ? state.message
-      : "Connecting...";
+      : "Connecting to pipeline…";
 
   if (state.status === "error") {
     return (
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-red-400" />
-          <p className="text-sm font-medium text-red-400">Pipeline failed</p>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-red-400" />
+            <p className="text-sm font-medium text-red-400">Pipeline failed</p>
+          </div>
+          <span className="text-[10px] text-zinc-600 tabular-nums">{formatElapsed(elapsed)}</span>
         </div>
-        <p className="text-xs text-red-300/70">{message}</p>
+        <p className="text-xs text-red-300/70 leading-relaxed">{message}</p>
+      </div>
+    );
+  }
+
+  if (state.status === "complete") {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-emerald-400" />
+            <p className="text-sm font-medium text-emerald-300">Pipeline complete</p>
+          </div>
+          <span className="text-[10px] text-zinc-500 tabular-nums">{formatElapsed(elapsed)}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
+            <div className="h-full rounded-full bg-emerald-500 transition-all duration-700 w-full" />
+          </div>
+          <span className="text-[10px] text-emerald-400 tabular-nums w-10 text-right">100%</span>
+        </div>
+        <div className="flex gap-1.5 flex-wrap">
+          {STAGES.map((s) => (
+            <span key={s} className="rounded-full px-2 py-0.5 text-[10px] font-medium capitalize bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+              ✓ {s}
+            </span>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <div>
+      {/* Header with stage and elapsed time */}
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" />
-          <p className="text-sm font-medium text-zinc-200">Analyzing...</p>
+          <p className="text-sm font-medium text-zinc-200 capitalize">{currentStage || "Starting"}…</p>
         </div>
-        <p className="text-xs text-zinc-500 mt-0.5">{message}</p>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-zinc-600 tabular-nums">{formatElapsed(elapsed)}</span>
+          <button
+            onClick={handleStop}
+            disabled={stopping}
+            className="rounded-md px-2 py-0.5 text-[10px] font-medium text-zinc-500 hover:text-red-400 hover:bg-red-500/10 border border-white/10 hover:border-red-500/20 transition-all disabled:opacity-50"
+          >
+            {stopping ? "Stopping…" : "Stop"}
+          </button>
+        </div>
       </div>
+
+      {/* Backend message */}
+      <p className="text-xs text-zinc-500 leading-relaxed">{message}</p>
 
       {/* Progress bar */}
       <div className="flex items-center gap-3">
@@ -82,7 +146,7 @@ function ActivePipeline({
             style={{ width: `${progress}%` }}
           />
         </div>
-        <span className="text-[10px] text-zinc-600 tabular-nums w-8 text-right">{progress}%</span>
+        <span className="text-[10px] text-zinc-600 tabular-nums w-10 text-right">{progress}%</span>
       </div>
 
       {/* Stage pills */}
@@ -90,7 +154,7 @@ function ActivePipeline({
         {STAGES.map((s) => {
           const idx = stageIndex(s);
           const currIdx = stageIndex(currentStage);
-          const done = currIdx > idx || state.status === "complete";
+          const done = currIdx > idx;
           const active = s === currentStage;
           return (
             <span
@@ -116,6 +180,7 @@ export function AnalysisItem({
   id,
   productName,
   createdAt,
+  mode,
   isActive,
   onComplete,
   onError,
@@ -141,9 +206,20 @@ export function AnalysisItem({
         onClick={() => router.push(`/project/${id}`)}
         className="flex-1 text-left group"
       >
-        <p className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">
-          {productName || "Analysis"}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">
+            {productName || "Analysis"}
+          </p>
+          {mode && (
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium border ${
+              mode === "deep"
+                ? "bg-purple-500/10 text-purple-300 border-purple-500/20"
+                : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20"
+            }`}>
+              {mode === "deep" ? "Deep" : "Quick"}
+            </span>
+          )}
+        </div>
         <p className="text-xs text-zinc-600">{formatDate(createdAt)}</p>
       </button>
       <button
