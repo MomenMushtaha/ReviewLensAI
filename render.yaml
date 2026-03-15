@@ -19,7 +19,9 @@ services:
       - key: SCRAPER_CONCURRENCY
         value: "3"
       - key: EMBEDDING_MODEL
-        value: all-MiniLM-L6-v2
+        value: text-embedding-3-small
+      - key: EMBEDDING_DIMENSIONS
+        value: "384"
       - key: SIMILARITY_THRESHOLD
         value: "0.20"
       - key: ALLOWED_ORIGINS

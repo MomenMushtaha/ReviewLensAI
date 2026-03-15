@@ -92,7 +92,7 @@ async def ingest(
     if progress_cb:
         await progress_cb("ingesting", 50, f"Generating embeddings for {inserted_count} reviews…")
 
-    # 4. Generate and store embeddings in batches
+    # 4. Generate and store embeddings in batches (async OpenAI API)
     embedder = get_embedder()
     if embedder and unembedded:
         ids = [row.id for row in unembedded]
@@ -101,7 +101,7 @@ async def ingest(
         for i in range(0, len(bodies), EMBEDDING_BATCH):
             batch_ids = ids[i: i + EMBEDDING_BATCH]
             batch_bodies = bodies[i: i + EMBEDDING_BATCH]
-            embeddings = embedder.encode(batch_bodies, show_progress_bar=False).tolist()
+            embeddings = await embedder.encode(batch_bodies)
 
             for rid, emb in zip(batch_ids, embeddings):
                 await db.execute(

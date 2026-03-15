@@ -21,17 +21,37 @@ class Base(DeclarativeBase):
     pass
 
 
-# Embedder singleton — loaded once in lifespan
-_embedder = None
+# Lightweight OpenAI embedder — no heavy model to load
+from openai import AsyncOpenAI
 
 
-def get_embedder():
+class OpenAIEmbedder:
+    """Async wrapper around OpenAI embeddings API."""
+
+    def __init__(self, api_key: str, model: str, dimensions: int):
+        self._client = AsyncOpenAI(api_key=api_key)
+        self._model = model
+        self._dimensions = dimensions
+
+    async def encode(self, texts: list[str]) -> list[list[float]]:
+        resp = await self._client.embeddings.create(
+            input=texts,
+            model=self._model,
+            dimensions=self._dimensions,
+        )
+        return [d.embedding for d in resp.data]
+
+
+_embedder: OpenAIEmbedder | None = None
+
+
+def get_embedder() -> OpenAIEmbedder | None:
     return _embedder
 
 
-def set_embedder(model):
+def set_embedder(embedder: OpenAIEmbedder):
     global _embedder
-    _embedder = model
+    _embedder = embedder
 
 
 async def get_db():

@@ -13,7 +13,6 @@ pandas==2.2.3
 numpy==1.26.4
 scikit-learn==1.5.2
 vaderSentiment==3.3.2
-sentence-transformers==3.2.1
 openai>=1.40.0
 tenacity==9.0.0
 python-multipart==0.0.22
