@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { UrlInputForm } from "@/components/UrlInputForm";
 import { AnalysisItem } from "@/components/AnalysisItem";
 
@@ -43,7 +42,6 @@ const FEATURES = [
 ];
 
 export default function HomePage() {
-  const router = useRouter();
   const [recent, setRecent] = useState<RecentAnalysis[]>([]);
   const [activePipelines, setActivePipelines] = useState<Set<string>>(new Set());
 
@@ -67,14 +65,9 @@ export default function HomePage() {
       return updated;
     });
 
-    if (mode === "quick") {
-      // Quick mode: navigate to project page with loading indicator (old behavior)
-      router.push(`/project/${projectId}?loading=true`);
-    } else {
-      // Deep mode: track inline progress on homepage
-      setActivePipelines((prev) => new Set(prev).add(projectId));
-    }
-  }, [router]);
+    // Both modes: track inline progress on homepage
+    setActivePipelines((prev) => new Set(prev).add(projectId));
+  }, []);
 
   const handlePipelineComplete = useCallback((projectId: string, productName: string | null, reviewCount: number) => {
     setActivePipelines((prev) => {
