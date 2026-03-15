@@ -1,9 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UrlInputForm } from "@/components/UrlInputForm";
-import { deleteProject } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { AnalysisItem } from "@/components/AnalysisItem";
 
 interface RecentAnalysis {
   id: string;
@@ -46,12 +45,78 @@ const FEATURES = [
 export default function HomePage() {
   const router = useRouter();
   const [recent, setRecent] = useState<RecentAnalysis[]>([]);
+  const [activePipelines, setActivePipelines] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("recent_analyses") || "[]");
       setRecent(stored);
     } catch {}
+  }, []);
+
+  const handlePipelineStarted = useCallback((projectId: string, mode: "quick" | "deep") => {
+    const entry: RecentAnalysis = {
+      id: projectId,
+      product_name: null,
+      review_count: 0,
+      created_at: new Date().toISOString(),
+    };
+    setRecent((prev) => {
+      const updated = [entry, ...prev].slice(0, 10);
+      localStorage.setItem("recent_analyses", JSON.stringify(updated));
+      return updated;
+    });
+
+    if (mode === "quick") {
+      // Quick mode: navigate to project page with loading indicator (old behavior)
+      router.push(`/project/${projectId}?loading=true`);
+    } else {
+      // Deep mode: track inline progress on homepage
+      setActivePipelines((prev) => new Set(prev).add(projectId));
+    }
+  }, [router]);
+
+  const handlePipelineComplete = useCallback((projectId: string, productName: string | null, reviewCount: number) => {
+    setActivePipelines((prev) => {
+      const next = new Set(prev);
+      next.delete(projectId);
+      return next;
+    });
+    setRecent((prev) => {
+      const updated = prev.map((r) =>
+        r.id === projectId
+          ? { ...r, product_name: productName || r.product_name, review_count: reviewCount }
+          : r
+      );
+      localStorage.setItem("recent_analyses", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const handlePipelineError = useCallback((projectId: string) => {
+    setActivePipelines((prev) => {
+      const next = new Set(prev);
+      next.delete(projectId);
+      return next;
+    });
+    setRecent((prev) => {
+      const updated = prev.filter((r) => r.id !== projectId);
+      localStorage.setItem("recent_analyses", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const handleDelete = useCallback((projectId: string) => {
+    setRecent((prev) => {
+      const updated = prev.filter((r) => r.id !== projectId);
+      localStorage.setItem("recent_analyses", JSON.stringify(updated));
+      return updated;
+    });
+    setActivePipelines((prev) => {
+      const next = new Set(prev);
+      next.delete(projectId);
+      return next;
+    });
   }, []);
 
   return (
@@ -91,7 +156,7 @@ export default function HomePage() {
 
         {/* Form */}
         <div className="glass rounded-2xl p-8 glow-accent">
-          <UrlInputForm />
+          <UrlInputForm onPipelineStarted={handlePipelineStarted} />
         </div>
 
         {/* Features */}
@@ -111,7 +176,7 @@ export default function HomePage() {
         </div>
 
         {/* Recent analyses */}
-        {recent.length > 0 && (
+        {(recent.length > 0 || activePipelines.size > 0) && (
           <div className="mt-12">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-widest">Recent Analyses</h2>
@@ -119,36 +184,16 @@ export default function HomePage() {
             </div>
             <div className="space-y-2">
               {recent.map((r) => (
-                <div
+                <AnalysisItem
                   key={r.id}
-                  className="glass glass-hover rounded-xl px-4 py-3 flex items-center justify-between transition-all duration-200"
-                >
-                  <button
-                    onClick={() => router.push(`/project/${r.id}`)}
-                    className="flex-1 text-left group"
-                  >
-                    <p className="text-sm font-medium text-zinc-200 group-hover:text-white transition-colors">
-                      {r.product_name || "Analysis"}
-                    </p>
-                    <p className="text-xs text-zinc-600">{formatDate(r.created_at)}</p>
-                  </button>
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (!confirm("Delete this analysis? This cannot be undone.")) return;
-                      try { await deleteProject(r.id); } catch {}
-                      const updated = recent.filter((a) => a.id !== r.id);
-                      setRecent(updated);
-                      localStorage.setItem("recent_analyses", JSON.stringify(updated));
-                    }}
-                    className="rounded-lg p-2 text-zinc-600 hover:bg-red-500/10 hover:text-red-400 transition-all"
-                    title="Delete analysis"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                    </svg>
-                  </button>
-                </div>
+                  id={r.id}
+                  productName={r.product_name}
+                  createdAt={r.created_at}
+                  isActive={activePipelines.has(r.id)}
+                  onComplete={handlePipelineComplete}
+                  onError={handlePipelineError}
+                  onDelete={handleDelete}
+                />
               ))}
             </div>
           </div>
