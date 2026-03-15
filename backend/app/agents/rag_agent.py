@@ -22,12 +22,12 @@ async def _retrieve_chunks(question: str, project_id: str, db: AsyncSession) -> 
     result = await db.execute(
         text("""
             SELECT id, body, reviewer_name, rating, date,
-                   1 - (embedding <=> :qemb::vector) AS similarity
+                   1 - (embedding <=> CAST(:qemb AS vector)) AS similarity
             FROM reviews
             WHERE project_id = :pid
               AND embedding IS NOT NULL
-              AND 1 - (embedding <=> :qemb::vector) >= :threshold
-            ORDER BY embedding <=> :qemb::vector
+              AND 1 - (embedding <=> CAST(:qemb AS vector)) >= :threshold
+            ORDER BY embedding <=> CAST(:qemb AS vector)
             LIMIT 8
         """),
         {"qemb": q_emb_str, "pid": project_id, "threshold": settings.similarity_threshold},

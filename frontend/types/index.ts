@@ -25,15 +25,16 @@ export interface Review {
 }
 
 export interface ThemeCluster {
-  cluster_id: number;
+  index: number;
   label: string | null;
   keywords: string[];
   review_count: number;
   avg_rating: number | null;
+  sentiment: string;
 }
 
 export interface TrendPoint {
-  period: string;
+  month: string;
   avg_rating: number;
   count: number;
 }
