@@ -33,14 +33,37 @@ export function UrlInputForm({ onPipelineStarted, existingAnalyses = [] }: UrlIn
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const validateTrustpilotUrl = (input: string): string | null => {
+    const trimmed = input.trim();
+    if (!trimmed) return "Please enter a Trustpilot URL";
+
+    try {
+      const parsed = new URL(trimmed);
+      if (!parsed.hostname.endsWith("trustpilot.com")) {
+        return "Only Trustpilot URLs are supported. Please enter a URL like: trustpilot.com/review/example.com";
+      }
+      if (!parsed.pathname.startsWith("/review/")) {
+        return "This doesn't look like a Trustpilot review page. The URL should be in the format: trustpilot.com/review/company-name";
+      }
+      const slug = parsed.pathname.replace("/review/", "").replace(/\/$/, "");
+      if (!slug || slug.includes("/")) {
+        return "Invalid review URL. Please use a direct company review link like: trustpilot.com/review/example.com";
+      }
+      return null;
+    } catch {
+      return "Please enter a valid URL starting with https://";
+    }
+  };
+
   const handleSubmit = async () => {
     setError(null);
     setLoading(true);
     try {
       const formData = new FormData();
       if (tab === "url") {
-        if (!url.trim()) {
-          setError("Please enter a Trustpilot URL");
+        const urlError = validateTrustpilotUrl(url);
+        if (urlError) {
+          setError(urlError);
           setLoading(false);
           return;
         }

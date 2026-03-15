@@ -36,17 +36,25 @@ export function useChat(projectId: string) {
         sources: data.sources,
         guardrailTriggered: data.guardrail_triggered,
         guardrailCategory: data.guardrail_category,
+        followUps: data.follow_ups || [],
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Sorry, something went wrong. Please try again." },
+        { role: "assistant", content: "Something went wrong connecting to the analysis engine. Please try again." },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
-  return { messages, loading, send };
+  const clearHistory = () => {
+    setMessages([]);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  };
+
+  return { messages, loading, send, clearHistory };
 }

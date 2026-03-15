@@ -210,7 +210,7 @@ export default function ProjectPage() {
 
           {/* Chat */}
           <TabsContent value="chat">
-            <ChatPanel projectId={projectId} />
+            <ChatPanel projectId={projectId} analysis={analysis} reviewCount={project.review_count} productName={project.product_name} />
           </TabsContent>
         </Tabs>
       </main>

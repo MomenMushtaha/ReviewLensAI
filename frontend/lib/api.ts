@@ -55,7 +55,16 @@ export async function runPipeline(formData: FormData): Promise<{ project_id: str
     method: "POST",
     body: formData,
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const text = await res.text();
+    try {
+      const json = JSON.parse(text);
+      throw new Error(json.detail || text);
+    } catch (e) {
+      if (e instanceof Error && e.message !== text) throw e;
+      throw new Error(text);
+    }
+  }
   return res.json();
 }
 
