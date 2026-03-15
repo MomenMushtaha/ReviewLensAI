@@ -50,6 +50,7 @@ Trustpilot URL / CSV Upload
 | **OpenAI API** | GPT-4o-mini for summaries, chat, and `text-embedding-3-small` for vector embeddings |
 | **pgvector** | PostgreSQL vector similarity search for RAG retrieval |
 | **tenacity** | Retry logic for external API calls |
+| **python-multipart** | File upload handling for CSV imports |
 
 ### Frontend
 
@@ -143,8 +144,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `EMBEDDING_MODEL` | Embedding model (default: `text-embedding-3-small`) |
 | `EMBEDDING_DIMENSIONS` | Vector dimensions (default: `384`) |
 | `ALLOWED_ORIGINS` | Comma-separated CORS origins |
-| `SCRAPER_MAX_PAGES` | Max Trustpilot pages to scrape (default: `10`) |
-| `SCRAPER_CONCURRENCY` | Concurrent scrape requests (default: `3`) |
+| `SCRAPER_MAX_PAGES` | Max Trustpilot pages to scrape (default: `50`) |
+| `SCRAPER_CONCURRENCY` | Concurrent scrape requests (default: `5`) |
 | `SIMILARITY_THRESHOLD` | RAG retrieval threshold (default: `0.20`) |
 | `MAX_CHAT_HISTORY_TURNS` | Chat context window (default: `6`) |
 
