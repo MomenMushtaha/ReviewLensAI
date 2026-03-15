@@ -65,8 +65,26 @@ async def _verify_company_exists(base_url: str) -> None:
                 timeout=15,
                 follow_redirects=True,
             )
+            # Retry once after a short delay if rate-limited on first attempt
+            if resp.status_code in (403, 429):
+                await asyncio.sleep(2)
+                resp = await client.get(
+                    f"{base_url}?page=1",
+                    headers=HEADERS,
+                    timeout=15,
+                    follow_redirects=True,
+                )
             if resp.status_code == 404:
                 raise HTTPException(status_code=422, detail=not_found_msg)
+            # 403/429 are rate-limiting — Trustpilot is blocking verification
+            # but the company may still exist. Skip verification and let the
+            # scraper (which has retries + backoff) handle it.
+            if resp.status_code in (403, 429):
+                logger.warning(
+                    "Trustpilot returned %d during verification for %s — skipping check",
+                    resp.status_code, slug,
+                )
+                return
             if resp.status_code >= 400:
                 raise HTTPException(
                     status_code=422,
