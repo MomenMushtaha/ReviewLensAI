@@ -2,7 +2,7 @@
 
 **Review Intelligence Portal** — Paste a Trustpilot URL or upload a CSV to get AI-powered sentiment analysis, theme clustering, rating trends, and a guardrailed Q&A chat assistant.
 
-**Live:** [frontend-ten-virid-65.vercel.app](https://frontend-ten-virid-65.vercel.app) | **API:** [reviewlens-api-l269.onrender.com](https://reviewlens-api-l269.onrender.com/docs)
+**Live:** [frontend-q542sakgl-momenmushtahas-projects.vercel.app](https://frontend-q542sakgl-momenmushtahas-projects.vercel.app) | **API:** [backend-pzpwheyys-momenmushtahas-projects.vercel.app](https://backend-pzpwheyys-momenmushtahas-projects.vercel.app/docs)
 
 > Built entirely by [Claude Code](https://claude.ai/claude-code) (Anthropic's AI coding agent).
 
@@ -90,6 +90,10 @@ Trustpilot URL / CSV Upload
 ## Features
 
 - **Trustpilot Scraper** — `__NEXT_DATA__` extraction with JSON-LD fallback, paginated multi-page scraping, CSV upload support
+- **Quick / Deep Analysis Modes** — Quick (~200 reviews) available now; Deep (~2,000 reviews) coming soon
+- **Inline Progress** — Real-time pipeline progress shown under Recent Analyses via SSE, no page navigation
+- **Cancel Analysis** — Stop a running analysis mid-scrape with responsive asyncio-based cancellation
+- **Duplicate Detection** — Blocks re-analyzing the same URL + mode combo; matches by URL or product name
 - **Smart Deduplication** — SHA-256 hash scoped per project prevents duplicate reviews
 - **Sentiment Analysis** — VADER compound score with star-rating override for extreme ratings (1-2 stars force negative, 4-5 stars force positive)
 - **Theme Discovery** — TF-IDF vectorization + KMeans clustering (up to 8 themes), with guaranteed sentiment diversity
@@ -99,6 +103,7 @@ Trustpilot URL / CSV Upload
 - **RAG Retrieval** — pgvector cosine similarity search over 384-dimensional embeddings
 - **Real-time Progress** — Server-Sent Events stream pipeline status to the frontend
 - **Review Browser** — Sortable, filterable, paginated review table with sentiment badges and star ratings
+- **Failed Analysis Handling** — Failed analyses show error reason, are non-clickable, and can be deleted
 - **Dark Glassmorphism UI** — Mesh gradient backgrounds, frosted glass cards, indigo accent palette
 
 ## Getting Started
@@ -155,7 +160,20 @@ Open [http://localhost:3000](http://localhost:3000).
 |---|---|
 | `NEXT_PUBLIC_API_URL` | Backend API URL (default: `http://localhost:8000`) |
 
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/pipeline/run` | Start a new analysis pipeline |
+| `GET` | `/api/pipeline/stream/{id}` | SSE stream for pipeline progress |
+| `POST` | `/api/pipeline/cancel/{id}` | Cancel a running pipeline |
+| `GET` | `/api/projects/{id}` | Get project details |
+| `DELETE` | `/api/projects/{id}` | Delete a project |
+| `GET` | `/api/projects/{id}/reviews` | Get paginated, sortable, filterable reviews |
+| `GET` | `/api/projects/{id}/analysis` | Get analysis (themes, sentiment, trends) |
+| `POST` | `/api/chat` | RAG-powered Q&A chat |
+
 ## Deployment
 
-- **Backend** — Render free tier (Docker). See `render.yaml` and `backend/Dockerfile`.
+- **Backend** — Vercel (serverless). See `backend/vercel.json`.
 - **Frontend** — Vercel with Root Directory set to `frontend/`.
