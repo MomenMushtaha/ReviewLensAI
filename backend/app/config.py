@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     allowed_origins: str = "http://localhost:3000"
 
     # Scraper
-    scraper_max_pages: int = 10
-    scraper_concurrency: int = 3
+    scraper_max_pages: int = 50
+    scraper_concurrency: int = 5
 
     # ML
     embedding_model: str = "text-embedding-3-small"
