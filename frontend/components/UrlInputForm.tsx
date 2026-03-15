@@ -85,7 +85,7 @@ export function UrlInputForm() {
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             placeholder="https://www.trustpilot.com/review/example.com"
-            className="w-full rounded-lg border border-gray-200 px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-black placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
           <p className="text-xs text-gray-400">Example: https://www.trustpilot.com/review/airbnb.com</p>
         </div>

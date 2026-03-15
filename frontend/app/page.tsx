@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { UrlInputForm } from "@/components/UrlInputForm";
+import { deleteProject } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 
 interface RecentAnalysis {
@@ -72,19 +73,41 @@ export default function HomePage() {
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Recent Analyses</h2>
             <div className="space-y-2">
               {recent.map((r) => (
-                <button
+                <div
                   key={r.id}
-                  onClick={() => router.push(`/project/${r.id}`)}
-                  className="flex w-full items-center justify-between rounded-lg border border-gray-100 bg-white px-4 py-3 text-left hover:border-indigo-200 transition-colors"
+                  className="flex w-full items-center justify-between rounded-lg border border-gray-100 bg-white px-4 py-3 hover:border-indigo-200 transition-colors"
                 >
-                  <div>
+                  <button
+                    onClick={() => router.push(`/project/${r.id}`)}
+                    className="flex-1 text-left"
+                  >
                     <p className="text-sm font-medium text-gray-800">
                       {r.product_name || "Analysis"}
                     </p>
                     <p className="text-xs text-gray-400">{formatDate(r.created_at)}</p>
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400">{r.id.slice(0, 8)}…</span>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!confirm("Delete this analysis? This cannot be undone.")) return;
+                        try {
+                          await deleteProject(r.id);
+                        } catch {}
+                        const updated = recent.filter((a) => a.id !== r.id);
+                        setRecent(updated);
+                        localStorage.setItem("recent_analyses", JSON.stringify(updated));
+                      }}
+                      className="rounded-md p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+                      title="Delete analysis"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                      </svg>
+                    </button>
                   </div>
-                  <span className="text-xs text-gray-400">{r.id.slice(0, 8)}…</span>
-                </button>
+                </div>
               ))}
             </div>
           </div>
