@@ -61,7 +61,7 @@ SUMMARIZER_TOOL = {
                 },
                 "theme_labels": {
                     "type": "object",
-                    "description": "Map of cluster index (as string) to human-readable theme label",
+                    "description": "Map of cluster index (as string) to a concise, descriptive theme title (3-6 words). Each title should clearly convey what the theme is about — e.g. 'Slow Delivery & Shipping Delays', 'Excellent Customer Support', 'App Crashes & Technical Issues'. Avoid generic labels like 'Theme 1', 'Positive Feedback', or 'Mixed Reviews'. Base each title on the cluster keywords and review content.",
                     "additionalProperties": {"type": "string"}
                 }
             },
@@ -143,7 +143,11 @@ Please produce a structured summary using the produce_summary tool."""
     system_prompt = (
         "You are a product intelligence analyst. Analyze the provided review data "
         "and produce a structured executive brief. Be specific, cite patterns from "
-        "the data. Do not invent information not present in the reviews."
+        "the data. Do not invent information not present in the reviews. "
+        "For theme_labels, write clear descriptive titles (3-6 words) that capture "
+        "the specific topic — e.g. 'Unreliable Refund Process', 'Friendly & Helpful Staff', "
+        "'Hidden Fees & Pricing Complaints'. Never use generic labels like 'General Feedback' "
+        "or 'Miscellaneous'."
     )
 
     if progress_cb:
