@@ -52,7 +52,7 @@ export default function HomePage() {
     } catch {}
   }, []);
 
-  const handlePipelineStarted = useCallback((projectId: string, mode: "quick" | "deep") => {
+  const handlePipelineStarted = useCallback((projectId: string) => {
     const entry: RecentAnalysis = {
       id: projectId,
       product_name: null,
