@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import uuid
 from fastapi import APIRouter, Depends, Form, File, UploadFile, HTTPException
 from fastapi.responses import StreamingResponse
@@ -9,6 +10,7 @@ from app.database import get_db, AsyncSessionLocal
 from app.models.project import Project
 from app.pipeline.orchestrator import run_pipeline, get_or_create_queue, pop_queue
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -18,6 +20,7 @@ async def start_pipeline(
     url: str | None = Form(None),
     file: UploadFile | None = File(None),
     product_name: str | None = Form(None),
+    max_reviews: int = Form(200),
     db: AsyncSession = Depends(get_db),
 ):
     if source_type == "url" and not url:
@@ -36,23 +39,35 @@ async def start_pipeline(
     await db.commit()
 
     csv_bytes = await file.read() if file else None
+    file_size = len(csv_bytes) if csv_bytes else 0
+
+    logger.info(
+        "Pipeline started: project=%s source=%s url=%s csv_size=%d max_reviews=%d",
+        project.id, source_type, url or "N/A", file_size, max_reviews,
+    )
 
     # Run pipeline in background task
     asyncio.create_task(
-        _run_pipeline_bg(project.id, source_type, url, csv_bytes)
+        _run_pipeline_bg(project.id, source_type, url, csv_bytes, max_reviews)
     )
 
     return {"project_id": project.id}
 
 
-async def _run_pipeline_bg(project_id: str, source_type: str, url: str | None, csv_bytes: bytes | None):
-    async with AsyncSessionLocal() as db:
-        await run_pipeline(project_id, source_type, url, csv_bytes, db)
+async def _run_pipeline_bg(project_id: str, source_type: str, url: str | None, csv_bytes: bytes | None, max_reviews: int = 200):
+    logger.info("Background task started: project=%s max_reviews=%d", project_id, max_reviews)
+    try:
+        async with AsyncSessionLocal() as db:
+            await run_pipeline(project_id, source_type, url, csv_bytes, db, max_reviews=max_reviews)
+        logger.info("Background task completed: project=%s", project_id)
+    except Exception:
+        logger.exception("Background task FAILED: project=%s", project_id)
 
 
 @router.get("/pipeline/stream/{project_id}")
 async def stream_progress(project_id: str):
     queue = get_or_create_queue(project_id)
+    logger.info("SSE stream connected: project=%s", project_id)
 
     async def event_generator():
         try:
@@ -68,9 +83,11 @@ async def stream_progress(project_id: str):
                 yield f"event: {event_type}\ndata: {data}\n\n"
 
                 if event_type in ("complete", "error"):
+                    logger.info("SSE stream ending: project=%s event=%s", project_id, event_type)
                     break
         finally:
             pop_queue(project_id)
+            logger.info("SSE stream closed: project=%s", project_id)
 
     return StreamingResponse(
         event_generator(),
