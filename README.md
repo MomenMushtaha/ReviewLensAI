@@ -2,7 +2,7 @@
 
 **Review Intelligence Portal** — Paste a Trustpilot URL or upload a CSV to get AI-powered sentiment analysis, theme clustering, rating trends, and a guardrailed Q&A chat assistant.
 
-**Live:** [frontend-q542sakgl-momenmushtahas-projects.vercel.app](https://frontend-ten-virid-65.vercel.app)| **API:** [backend-pzpwheyys-momenmushtahas-projects.vercel.app](https://backend-pzpwheyys-momenmushtahas-projects.vercel.app/docs)
+**Live:** [frontend-ten-virid-65.vercel.app](https://frontend-ten-virid-65.vercel.app)| **API:** [backend-pzpwheyys-momenmushtahas-projects.vercel.app](https://backend-pzpwheyys-momenmushtahas-projects.vercel.app/docs)
 
 > Built entirely by [Claude Code](https://claude.ai/claude-code) (Anthropic's AI coding agent).
 
