@@ -6,9 +6,6 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from tenacity import retry, stop_after_attempt, wait_exponential, before_sleep_log
 from openai import AsyncOpenAI
-
-logger = logging.getLogger(__name__)
-
 from app.config import settings
 from app.models.analysis import Analysis
 from app.utils.text_cleaner import truncate
