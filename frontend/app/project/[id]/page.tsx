@@ -155,10 +155,49 @@ export default function ProjectPage() {
           {/* Themes */}
           <TabsContent value="themes">
             {analysis?.themes?.length ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {analysis.themes.map((theme) => (
-                  <ThemeCard key={theme.cluster_id} theme={theme} />
-                ))}
+              <div className="space-y-6">
+                {/* Summary header */}
+                <div className="flex flex-wrap items-center gap-4">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {analysis.themes.length} Themes Discovered
+                  </h2>
+                  <div className="flex gap-2">
+                    {Object.entries(
+                      analysis.themes.reduce<Record<string, number>>((acc, t) => {
+                        acc[t.sentiment] = (acc[t.sentiment] || 0) + 1;
+                        return acc;
+                      }, {})
+                    ).map(([sentiment, count]) => {
+                      const colors: Record<string, string> = {
+                        positive: "bg-emerald-100 text-emerald-700",
+                        negative: "bg-red-100 text-red-700",
+                        neutral: "bg-gray-100 text-gray-600",
+                        mixed: "bg-amber-100 text-amber-700",
+                      };
+                      return (
+                        <span
+                          key={sentiment}
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
+                            colors[sentiment] || "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {count} {sentiment}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Theme cards grid */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {analysis.themes.map((theme, i) => (
+                    <ThemeCard
+                      key={`theme-${i}`}
+                      theme={theme}
+                      maxReviews={Math.max(...analysis.themes.map((t) => t.review_count))}
+                    />
+                  ))}
+                </div>
               </div>
             ) : (
               <Card>
