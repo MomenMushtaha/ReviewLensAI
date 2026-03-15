@@ -1,9 +1,12 @@
 import json
+import logging
 import random
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from tenacity import retry, stop_after_attempt, wait_exponential
 from openai import AsyncOpenAI
+
+logger = logging.getLogger(__name__)
 
 from app.config import settings
 from app.models.analysis import Analysis
@@ -75,7 +78,7 @@ SUMMARIZER_TOOL = {
 async def _call_openai(system_prompt: str, user_prompt: str) -> dict:
     response = await _client.chat.completions.create(
         model=settings.openai_model,
-        max_tokens=1500,
+        max_tokens=2500,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -160,6 +163,7 @@ Please produce a structured summary using the produce_summary tool."""
 
     # Write back to analysis row
     theme_labels: dict = result.get("theme_labels", {})
+    logger.info("Summarizer theme_labels keys=%s values=%s", list(theme_labels.keys()), list(theme_labels.values()))
     await db.execute(
         update(Analysis)
         .where(Analysis.project_id == project_id)
