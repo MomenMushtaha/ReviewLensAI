@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -109,8 +110,9 @@ async def get_analysis(project_id: str, db: AsyncSession = Depends(get_db)):
                         themes[i].label = label_map[key]
 
     # Generate keyword-based labels for any themes still missing a label
+    # or that have generic "Theme N" labels
     for t in themes:
-        if not t.label and t.keywords:
+        if (not t.label or re.match(r"^Theme\s*\d+$", t.label, re.IGNORECASE)) and t.keywords:
             t.label = " & ".join(kw.title() for kw in t.keywords[:3])
 
     trend_raw = json.loads(analysis.trend_data)
