@@ -5,7 +5,7 @@ import { getPipelineSSEUrl } from "@/lib/api";
 export type PipelineState =
   | { status: "connecting" }
   | { status: "running"; stage: string; progress: number; message: string }
-  | { status: "complete"; projectId: string; reviewCount: number }
+  | { status: "complete"; projectId: string; reviewCount: number; productName: string | null }
   | { status: "error"; message: string };
 
 export function usePipelineSSE(projectId: string | null): PipelineState {
@@ -25,7 +25,7 @@ export function usePipelineSSE(projectId: string | null): PipelineState {
 
     es.addEventListener("complete", (e: MessageEvent) => {
       const data = JSON.parse(e.data);
-      setState({ status: "complete", projectId: data.project_id, reviewCount: data.review_count });
+      setState({ status: "complete", projectId: data.project_id, reviewCount: data.review_count, productName: data.product_name || null });
       es.close();
     });
 

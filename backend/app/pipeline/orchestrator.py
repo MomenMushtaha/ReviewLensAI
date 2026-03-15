@@ -13,8 +13,17 @@ from app.pipeline import summarizer as summarizer_mod
 
 logger = logging.getLogger(__name__)
 
+
+class CancelledError(Exception):
+    def __init__(self, project_id: str):
+        self.project_id = project_id
+        super().__init__(f"Pipeline cancelled for {project_id}")
+
+
 # project_id → asyncio.Queue for SSE events
 _progress_queues: dict[str, asyncio.Queue] = {}
+# project_id → asyncio.Event for cancellation
+_cancel_events: dict[str, asyncio.Event] = {}
 
 
 def get_or_create_queue(project_id: str) -> asyncio.Queue:
@@ -24,7 +33,16 @@ def get_or_create_queue(project_id: str) -> asyncio.Queue:
 
 
 def pop_queue(project_id: str) -> asyncio.Queue | None:
+    _cancel_events.pop(project_id, None)
     return _progress_queues.pop(project_id, None)
+
+
+def cancel_pipeline(project_id: str) -> bool:
+    ev = _cancel_events.get(project_id)
+    if ev:
+        ev.set()
+        return True
+    return False
 
 
 async def _set_status(db: AsyncSession, project_id: str, status: str, error: str | None = None):
@@ -47,10 +65,16 @@ async def run_pipeline(
     max_reviews: int = 200,
 ):
     queue = get_or_create_queue(project_id)
+    cancel_event = asyncio.Event()
+    _cancel_events[project_id] = cancel_event
     pipeline_start = time.monotonic()
 
     async def emit(stage: str, progress: int, message: str):
         await queue.put({"type": "progress", "stage": stage, "progress": progress, "message": message})
+
+    def check_cancelled():
+        if cancel_event.is_set():
+            raise CancelledError(project_id)
 
     product_name: str | None = None
 
@@ -66,7 +90,7 @@ async def run_pipeline(
         await emit("scraping", 0, "Starting scrape…")
 
         if source_type == "url" and url:
-            reviews, product_name = await scraper_mod.scrape_trustpilot(url, max_reviews=max_reviews, progress_cb=emit)
+            reviews, product_name = await scraper_mod.scrape_trustpilot(url, max_reviews=max_reviews, progress_cb=emit, cancel_check=check_cancelled)
         elif source_type == "csv" and csv_bytes:
             reviews = scraper_mod.parse_csv(csv_bytes)
             product_name = None
@@ -81,6 +105,8 @@ async def run_pipeline(
             project_id, len(reviews), product_name or "N/A", time.monotonic() - stage_start,
         )
 
+        check_cancelled()
+
         # Update product name if found
         if product_name:
             await db.execute(
@@ -89,6 +115,7 @@ async def run_pipeline(
             await db.commit()
 
         # ── Stage 2: Ingest ──────────────────────────────────────────────────
+        check_cancelled()
         stage_start = time.monotonic()
         await _set_status(db, project_id, "ingesting")
         ingest_result = await ingester_mod.ingest(reviews, project_id, db, progress_cb=emit)
@@ -103,6 +130,7 @@ async def run_pipeline(
             await emit("ingesting", 100, "All reviews already ingested (duplicates skipped)")
 
         # ── Stage 3: Analyze ─────────────────────────────────────────────────
+        check_cancelled()
         stage_start = time.monotonic()
         await _set_status(db, project_id, "analyzing")
         analysis_data = await analyzer_mod.analyze(project_id, db, progress_cb=emit)
@@ -117,6 +145,7 @@ async def run_pipeline(
         )
 
         # ── Stage 4: Summarize ───────────────────────────────────────────────
+        check_cancelled()
         stage_start = time.monotonic()
         await _set_status(db, project_id, "summarizing")
         await summarizer_mod.summarize(analysis_data, project_id, product_name, db, progress_cb=emit)
@@ -137,8 +166,12 @@ async def run_pipeline(
             "type": "complete",
             "project_id": project_id,
             "review_count": ingest_result.inserted,
+            "product_name": product_name,
         })
 
+    except CancelledError:
+        await _set_status(db, project_id, "error", "Analysis stopped by user")
+        await queue.put({"type": "error", "message": "Analysis stopped by user"})
     except Exception as exc:
         total_elapsed = time.monotonic() - pipeline_start
         logger.exception(
@@ -148,3 +181,5 @@ async def run_pipeline(
         error_msg = str(exc)
         await _set_status(db, project_id, "error", error_msg)
         await queue.put({"type": "error", "message": error_msg})
+    finally:
+        _cancel_events.pop(project_id, None)
