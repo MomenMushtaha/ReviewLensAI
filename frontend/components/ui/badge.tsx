@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 
 const variants = {
-  default: "bg-indigo-100 text-indigo-700",
-  positive: "bg-emerald-100 text-emerald-700",
-  negative: "bg-red-100 text-red-700",
-  neutral: "bg-gray-100 text-gray-600",
-  outline: "border border-gray-200 text-gray-600 bg-white",
+  default: "bg-indigo-500/15 text-indigo-300 border border-indigo-500/20",
+  positive: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20",
+  negative: "bg-red-500/15 text-red-300 border border-red-500/20",
+  neutral: "bg-white/5 text-zinc-400 border border-white/10",
+  outline: "border border-white/10 text-zinc-400",
 };
 
 interface BadgeProps {

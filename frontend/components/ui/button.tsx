@@ -3,10 +3,10 @@ import { cn } from "@/lib/utils";
 import { type ButtonHTMLAttributes, forwardRef } from "react";
 
 const variants = {
-  default: "bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50",
-  outline: "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50",
-  ghost: "text-gray-600 hover:bg-gray-100 disabled:opacity-50",
-  destructive: "bg-red-600 text-white hover:bg-red-700 disabled:opacity-50",
+  default: "bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/25 disabled:opacity-50",
+  outline: "border border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 disabled:opacity-50",
+  ghost: "text-zinc-400 hover:bg-white/5 hover:text-zinc-200 disabled:opacity-50",
+  destructive: "bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-500/25 disabled:opacity-50",
 };
 
 const sizes = {
