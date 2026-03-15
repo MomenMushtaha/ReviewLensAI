@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.database import engine, set_embedder
+from app.database import engine, set_embedder, OpenAIEmbedder
 import subprocess
 
 
@@ -18,9 +18,12 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"WARNING: Alembic migration failed: {e}", flush=True)
 
-    # Load sentence-transformers embedder
-    from sentence_transformers import SentenceTransformer
-    embedder = SentenceTransformer(settings.embedding_model)
+    # Initialize lightweight OpenAI embedder (no model download, ~0 MB RAM)
+    embedder = OpenAIEmbedder(
+        api_key=settings.openai_api_key,
+        model=settings.embedding_model,
+        dimensions=settings.embedding_dimensions,
+    )
     set_embedder(embedder)
 
     yield

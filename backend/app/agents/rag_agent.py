@@ -16,7 +16,8 @@ async def _retrieve_chunks(question: str, project_id: str, db: AsyncSession) -> 
     if not embedder:
         return []
 
-    q_emb = embedder.encode([question])[0].tolist()
+    embeddings = await embedder.encode([question])
+    q_emb = embeddings[0]
     q_emb_str = "[" + ",".join(str(x) for x in q_emb) + "]"
 
     result = await db.execute(
