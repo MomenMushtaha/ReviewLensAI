@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from pgvector.sqlalchemy import Vector  # noqa: F401 — registers the type
+from openai import AsyncOpenAI
 from app.config import settings
 
 engine = create_async_engine(
@@ -19,10 +20,6 @@ AsyncSessionLocal = async_sessionmaker(
 
 class Base(DeclarativeBase):
     pass
-
-
-# Lightweight OpenAI embedder — no heavy model to load
-from openai import AsyncOpenAI
 
 
 class OpenAIEmbedder:
