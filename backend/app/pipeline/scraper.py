@@ -182,34 +182,21 @@ def _extract_total_reviews(html: str) -> int | None:
     return None
 
 
-async def _fetch_page(client: httpx.AsyncClient, url: str, retries: int = 4) -> str:
-    last_status = None
-    for attempt in range(retries):
-        try:
-            resp = await client.get(url, headers=HEADERS, timeout=20, follow_redirects=True)
-            last_status = resp.status_code
-            if resp.status_code in (403, 429) or resp.status_code >= 500:
-                delay = 2 ** (attempt + 1)
-                logger.warning("HTML fetch %d on %s, retrying in %.1fs", resp.status_code, url, delay)
-                await asyncio.sleep(delay)
-                continue
-            resp.raise_for_status()
-            return resp.text
-        except httpx.HTTPStatusError as e:
-            last_status = e.response.status_code
-            if attempt == retries - 1:
-                raise ScraperError(f"HTTP {e.response.status_code} fetching {url}") from e
-            await asyncio.sleep(2 ** attempt)
-        except httpx.RequestError as e:
-            if attempt == retries - 1:
-                raise ScraperError(f"Request error fetching {url}: {e}") from e
-            await asyncio.sleep(2 ** attempt)
-    if last_status in (403, 429):
-        raise ScraperError(
-            "Trustpilot is rate-limiting your IP address. "
-            "Please wait a few minutes and try again, or try from a different network."
-        )
-    raise ScraperError(f"Failed to fetch {url} after {retries} attempts")
+async def _fetch_page(client: httpx.AsyncClient, url: str) -> str:
+    """Fetch an HTML page. No retries — fails fast on rate limit."""
+    try:
+        resp = await client.get(url, headers=HEADERS, timeout=20, follow_redirects=True)
+        if resp.status_code in (403, 429):
+            raise ScraperError(
+                "Trustpilot is rate-limiting your IP address. "
+                "Please wait a few minutes and try again, or try from a different network."
+            )
+        resp.raise_for_status()
+        return resp.text
+    except httpx.HTTPStatusError as e:
+        raise ScraperError(f"HTTP {e.response.status_code} fetching {url}") from e
+    except httpx.RequestError as e:
+        raise ScraperError(f"Request error fetching {url}: {e}") from e
 
 
 def _extract_business_unit_id(html: str) -> str | None:
@@ -256,37 +243,25 @@ async def _fetch_reviews_json(
     client: httpx.AsyncClient,
     business_unit_id: str,
     page: int,
-    retries: int = 4,
-) -> list[dict]:
-    """Fetch a page of reviews from the Trustpilot JSON API."""
+) -> list[dict] | str:
+    """Fetch a page of reviews from the Trustpilot JSON API.
+    Returns list of reviews on success, or "rate_limited" string on 403/429."""
     url = (
         f"https://www.trustpilot.com/api/categoriespages/{business_unit_id}/reviews"
         f"?locale=en-US&page={page}"
     )
-    for attempt in range(retries):
-        try:
-            resp = await client.get(url, headers=JSON_API_HEADERS, timeout=20, follow_redirects=True)
-            if resp.status_code == 403:
-                # Rate limited — treat as retryable
-                delay = 2 ** (attempt + 1)
-                logger.warning("JSON API 403 on page %d, backing off %.1fs", page, delay)
-                await asyncio.sleep(delay)
-                continue
-            if resp.status_code == 429 or resp.status_code >= 500:
-                await asyncio.sleep(2 ** attempt)
-                continue
-            resp.raise_for_status()
-            data = resp.json()
-            return data.get("reviews", [])
-        except httpx.HTTPStatusError as e:
-            if attempt == retries - 1:
-                raise ScraperError(f"JSON API HTTP {e.response.status_code} for page {page}") from e
-            await asyncio.sleep(2 ** attempt)
-        except httpx.RequestError as e:
-            if attempt == retries - 1:
-                raise ScraperError(f"JSON API request error page {page}: {e}") from e
-            await asyncio.sleep(2 ** attempt)
-    return []
+    try:
+        resp = await client.get(url, headers=JSON_API_HEADERS, timeout=20, follow_redirects=True)
+        if resp.status_code in (403, 429):
+            logger.warning("JSON API %d on page %d", resp.status_code, page)
+            return "rate_limited"
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("reviews", [])
+    except httpx.HTTPStatusError as e:
+        raise ScraperError(f"JSON API HTTP {e.response.status_code} for page {page}") from e
+    except httpx.RequestError as e:
+        raise ScraperError(f"JSON API request error page {page}: {e}") from e
 
 
 async def _scrape_json_api(
@@ -295,19 +270,25 @@ async def _scrape_json_api(
     source_url: str,
     max_reviews: int,
     progress_cb=None,
+    cancel_check=None,
 ) -> list[RawReview]:
-    """Scrape reviews using Trustpilot's internal JSON API with adaptive pacing."""
+    """Scrape reviews using Trustpilot's internal JSON API with adaptive pacing.
+    Slows down on rate limiting and stops after sustained 403/429 responses."""
     all_reviews: list[RawReview] = []
     page_limit = max_reviews // JSON_API_PER_PAGE + 1
-    batch_size = settings.scraper_concurrency
-    delay = 0.5
+    batch_size = min(settings.scraper_concurrency, 3)  # start conservative for deep mode
+    delay = 1.0  # start slower to reduce rate limit risk
     consecutive_empty = 0
+    consecutive_rate_limited = 0
     semaphore = asyncio.Semaphore(batch_size)
 
     logger.info("JSON API scrape start: unit=%s max_reviews=%d page_limit=%d", business_unit_id, max_reviews, page_limit)
 
     page = 1
     while page <= page_limit:
+        if cancel_check:
+            cancel_check()
+
         current_batch_size = min(batch_size, page_limit - page + 1)
         pages = list(range(page, page + current_batch_size))
 
@@ -318,39 +299,69 @@ async def _scrape_json_api(
         results = await asyncio.gather(*[fetch_with_sem(p) for p in pages], return_exceptions=True)
 
         batch_empty = True
+        batch_rate_limited = False
         for result in results:
-            if isinstance(result, list) and result:
+            if result == "rate_limited":
+                batch_rate_limited = True
+            elif isinstance(result, list) and result:
                 batch_empty = False
                 for raw in result:
                     all_reviews.append(_map_json_api_review(raw, source_url))
 
-        if batch_empty:
+        if batch_rate_limited:
+            consecutive_rate_limited += 1
+            # Back off aggressively on rate limit
+            delay = min(delay * 2, 15.0)
+            batch_size = max(batch_size - 1, 1)
+            semaphore = asyncio.Semaphore(batch_size)
+            logger.warning(
+                "Rate limited batch %d, delay=%.1fs batch_size=%d reviews_so_far=%d",
+                consecutive_rate_limited, delay, batch_size, len(all_reviews),
+            )
+            if progress_cb:
+                await progress_cb(
+                    "scraping", min(90, int(len(all_reviews) / max_reviews * 90)),
+                    f"Rate limited — slowing down… ({len(all_reviews)} reviews collected)",
+                )
+            if consecutive_rate_limited >= 3:
+                # Give up after 3 consecutive rate-limited batches
+                logger.info(
+                    "Stopping after %d rate-limited batches, collected %d reviews",
+                    consecutive_rate_limited, len(all_reviews),
+                )
+                if len(all_reviews) == 0:
+                    raise ScraperError(
+                        "Trustpilot is rate-limiting your IP address. "
+                        "Please wait a few minutes and try again, or try from a different network."
+                    )
+                # Return what we have so far
+                break
+        elif batch_empty:
             consecutive_empty += 1
-            # Adaptive back-off: slow down and reduce batch size
+            consecutive_rate_limited = 0
             delay = min(delay * 1.5, 8.0)
             batch_size = max(batch_size - 1, 1)
             semaphore = asyncio.Semaphore(batch_size)
-            logger.debug("Empty batch %d, delay=%.1fs batch_size=%d", consecutive_empty, delay, batch_size)
             if consecutive_empty >= 5:
                 logger.info("Stopping after %d consecutive empty batches at page %d", consecutive_empty, page)
                 break
         else:
             consecutive_empty = 0
-            # Restore speed on success
+            consecutive_rate_limited = 0
+            # Gradually speed up on success
             if batch_size < settings.scraper_concurrency:
                 batch_size = min(batch_size + 1, settings.scraper_concurrency)
                 semaphore = asyncio.Semaphore(batch_size)
-            if delay > 0.5:
-                delay = max(delay * 0.8, 0.5)
+            if delay > 1.0:
+                delay = max(delay * 0.8, 1.0)
 
         page += current_batch_size
 
-        # Early stop if we have enough
         if len(all_reviews) >= max_reviews:
             break
 
         await asyncio.sleep(delay)
-        if progress_cb:
+        if progress_cb and not batch_rate_limited:
             pct = min(90, int(len(all_reviews) / max_reviews * 90))
             await progress_cb("scraping", pct, f"Scraped {len(all_reviews)} reviews so far…")
 
@@ -364,6 +375,7 @@ async def _scrape_html(
     page1_html: str,
     total: int | None,
     progress_cb=None,
+    cancel_check=None,
 ) -> list[RawReview]:
     """Original HTML scraper — uses settings.scraper_max_pages to cap pages."""
     all_reviews: list[RawReview] = []
@@ -388,6 +400,8 @@ async def _scrape_html(
             return _parse_trustpilot_page(html, base_url)
 
     for batch_start in range(2, max_pages + 1, settings.scraper_concurrency):
+        if cancel_check:
+            cancel_check()
         batch = range(batch_start, min(batch_start + settings.scraper_concurrency, max_pages + 1))
         results = await asyncio.gather(*[fetch_page_n(p) for p in batch], return_exceptions=True)
         for result in results:
@@ -405,6 +419,7 @@ async def scrape_trustpilot(
     url: str,
     max_reviews: int | None = None,
     progress_cb=None,
+    cancel_check=None,
 ) -> tuple[list[RawReview], str | None]:
     """
     Scrape reviews from a Trustpilot URL.
@@ -437,13 +452,13 @@ async def scrape_trustpilot(
                 logger.info("Deep mode: JSON API (unit=%s, target=%d)", business_unit_id, effective_max)
                 if progress_cb:
                     await progress_cb("scraping", 10, f"Found ~{total or '?'} reviews, deep scrape for up to {effective_max}…")
-                all_reviews = await _scrape_json_api(client, business_unit_id, base_url, effective_max, progress_cb)
+                all_reviews = await _scrape_json_api(client, business_unit_id, base_url, effective_max, progress_cb, cancel_check)
             else:
                 logger.warning("No businessUnitId found, falling back to HTML scraper")
-                all_reviews = await _scrape_html(client, base_url, page1_html, total, progress_cb)
+                all_reviews = await _scrape_html(client, base_url, page1_html, total, progress_cb, cancel_check)
         else:
             # ── Quick mode: original HTML scraper ────────────────────────
-            all_reviews = await _scrape_html(client, base_url, page1_html, total, progress_cb)
+            all_reviews = await _scrape_html(client, base_url, page1_html, total, progress_cb, cancel_check)
 
     # Filter empty bodies and enforce cap
     all_reviews = [r for r in all_reviews if r.body and r.body.strip()]
