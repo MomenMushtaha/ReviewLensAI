@@ -78,6 +78,11 @@ export async function deleteProject(id: string): Promise<void> {
   if (!res.ok) throw new Error(await res.text());
 }
 
+export async function cancelPipeline(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/pipeline/cancel/${id}`, { method: "POST" });
+  if (!res.ok) throw new Error(await res.text());
+}
+
 export function getPipelineSSEUrl(projectId: string): string {
   return `${API_BASE}/api/pipeline/stream/${projectId}`;
 }
