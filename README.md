@@ -1,8 +1,8 @@
 # ReviewLens AI
 
-**Review Intelligence Portal** — Paste a Trustpilot URL or upload a CSV to get AI-powered sentiment analysis, theme clustering, rating trends, and a guardrailed Q&A chat assistant. Built with FastAPI, Next.js, and OpenAI.
+**Review Intelligence Portal** — Paste a Trustpilot URL or upload a CSV to get AI-powered sentiment analysis, theme clustering, rating trends, and a guardrailed Q&A chat assistant.
 
-**Live:** [frontend-ten-virid-65.vercel.app](https://frontend-ten-virid-65.vercel.app) | **API:** [reviewlens-api.onrender.com](https://reviewlens-api.onrender.com/docs)
+**Live:** [frontend-ten-virid-65.vercel.app](https://frontend-ten-virid-65.vercel.app) | **API:** [reviewlens-api-l269.onrender.com](https://reviewlens-api-l269.onrender.com/docs)
 
 > Built entirely by [Claude Code](https://claude.ai/claude-code) (Anthropic's AI coding agent).
 
@@ -32,29 +32,73 @@ Trustpilot URL / CSV Upload
 
 ## Tech Stack
 
-| Layer | Technology |
+### Backend
+
+| Technology | Purpose |
 |---|---|
-| **Backend** | Python 3.11, FastAPI (fully async), Alembic migrations |
-| **Database** | Supabase PostgreSQL + pgvector |
-| **Embeddings** | `all-MiniLM-L6-v2` via sentence-transformers (local, free) |
-| **LLM** | GPT-4o-mini via OpenAI API |
-| **Sentiment** | VADER (local, no API cost) with star-rating override |
-| **Clustering** | scikit-learn TF-IDF + KMeans |
-| **Frontend** | Next.js 14, Tailwind CSS, Recharts |
-| **Deployment** | Render (backend Docker) + Vercel (frontend) |
+| **Python 3.11** | Runtime |
+| **FastAPI** | Fully async REST API framework |
+| **Uvicorn** | ASGI server with HTTP/2 support |
+| **Pydantic v2** | Request/response validation and settings management |
+| **SQLAlchemy 2.0** | Async ORM with asyncpg driver |
+| **Alembic** | Database schema migrations |
+| **httpx** | Async HTTP client with HTTP/2 for Trustpilot scraping |
+| **BeautifulSoup4 + lxml** | HTML parsing and JSON-LD extraction |
+| **pandas + NumPy** | Data manipulation and numerical computation |
+| **scikit-learn** | TF-IDF vectorization + KMeans clustering for theme discovery |
+| **VADER Sentiment** | Rule-based sentiment analysis (no API cost) |
+| **OpenAI API** | GPT-4o-mini for summaries, chat, and `text-embedding-3-small` for vector embeddings |
+| **pgvector** | PostgreSQL vector similarity search for RAG retrieval |
+| **tenacity** | Retry logic for external API calls |
+
+### Frontend
+
+| Technology | Purpose |
+|---|---|
+| **Next.js 14** | React framework with App Router and SSR |
+| **React 18** | UI component library |
+| **TypeScript** | Type-safe frontend development |
+| **Tailwind CSS** | Utility-first styling with dark glassmorphism theme |
+| **Recharts** | Interactive charts for sentiment and trend visualization |
+| **Lucide React** | SVG icon library |
+| **react-markdown** | Markdown rendering in chat responses |
+| **class-variance-authority** | Component variant management for UI primitives |
+| **tailwind-merge + clsx** | Conditional class name composition |
+
+### Infrastructure
+
+| Technology | Purpose |
+|---|---|
+| **Supabase** | Managed PostgreSQL database with pgvector extension |
+| **Render** | Backend Docker deployment (free tier) |
+| **Vercel** | Frontend hosting with edge network and preview deploys |
+| **Docker** | Backend containerization |
+| **GitHub** | Source control and CI/CD integration |
+
+### AI / ML Pipeline
+
+| Component | Technology |
+|---|---|
+| **Embeddings** | OpenAI `text-embedding-3-small` (384 dimensions) via async API |
+| **LLM** | GPT-4o-mini via OpenAI tool-use API |
+| **Sentiment** | VADER compound score with star-rating override |
+| **Clustering** | TF-IDF + KMeans (up to 8 themes, sentiment-diverse) |
+| **RAG** | pgvector cosine similarity + 3-layer guardrail system |
+| **Deduplication** | SHA-256 hash of `(source_url + body[:200])` per project |
 
 ## Features
 
 - **Trustpilot Scraper** — `__NEXT_DATA__` extraction with JSON-LD fallback, paginated multi-page scraping, CSV upload support
-- **Smart Deduplication** — SHA-256 hash of `(source_url + body[:200])`, scoped per project
+- **Smart Deduplication** — SHA-256 hash scoped per project prevents duplicate reviews
 - **Sentiment Analysis** — VADER compound score with star-rating override for extreme ratings (1-2 stars force negative, 4-5 stars force positive)
 - **Theme Discovery** — TF-IDF vectorization + KMeans clustering (up to 8 themes), with guaranteed sentiment diversity
 - **AI Summaries** — OpenAI tool-use API generates labeled themes and an executive brief
 - **Rating Trends** — Monthly average rating and review volume charts via Recharts
 - **Guardrailed Chat** — 3-layer guardrail (regex pre-filter, system prompt boundary, hallucination scan) keeps responses grounded in review data
-- **RAG Retrieval** — pgvector cosine similarity search over 384-dimensional sentence embeddings
+- **RAG Retrieval** — pgvector cosine similarity search over 384-dimensional embeddings
 - **Real-time Progress** — Server-Sent Events stream pipeline status to the frontend
-- **Review Browser** — Sortable, paginated review table with sentiment badges and star ratings
+- **Review Browser** — Sortable, filterable, paginated review table with sentiment badges and star ratings
+- **Dark Glassmorphism UI** — Mesh gradient backgrounds, frosted glass cards, indigo accent palette
 
 ## Getting Started
 
@@ -84,3 +128,33 @@ npm install
 cp .env.local.example .env.local   # set NEXT_PUBLIC_API_URL
 npm run dev
 ```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Environment Variables
+
+### Backend (`backend/.env`)
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (`postgresql+asyncpg://...`) |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `OPENAI_MODEL` | Chat/summary model (default: `gpt-4o-mini`) |
+| `EMBEDDING_MODEL` | Embedding model (default: `text-embedding-3-small`) |
+| `EMBEDDING_DIMENSIONS` | Vector dimensions (default: `384`) |
+| `ALLOWED_ORIGINS` | Comma-separated CORS origins |
+| `SCRAPER_MAX_PAGES` | Max Trustpilot pages to scrape (default: `10`) |
+| `SCRAPER_CONCURRENCY` | Concurrent scrape requests (default: `3`) |
+| `SIMILARITY_THRESHOLD` | RAG retrieval threshold (default: `0.20`) |
+| `MAX_CHAT_HISTORY_TURNS` | Chat context window (default: `6`) |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Backend API URL (default: `http://localhost:8000`) |
+
+## Deployment
+
+- **Backend** — Render free tier (Docker). See `render.yaml` and `backend/Dockerfile`.
+- **Frontend** — Vercel with Root Directory set to `frontend/`.
