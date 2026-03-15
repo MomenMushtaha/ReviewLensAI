@@ -94,11 +94,21 @@ async def get_analysis(project_id: str, db: AsyncSession = Depends(get_db)):
     themes_raw = json.loads(analysis.themes)
     themes = [ThemeCluster(**t) for t in themes_raw]
 
-    # Apply theme labels if available
+    # Apply theme labels from summarizer
     if analysis.theme_labels:
         label_map = json.loads(analysis.theme_labels)
-        for t in themes:
-            t.label = label_map.get(str(t.index), t.label)
+        if label_map:
+            for t in themes:
+                # Try 0-indexed key first, then 1-indexed (LLMs sometimes use either)
+                label = label_map.get(str(t.index)) or label_map.get(str(t.index + 1))
+                if label:
+                    t.label = label
+            # If no labels matched (keys might be something else), try sequential assignment
+            if all(t.label is None for t in themes):
+                sorted_keys = sorted(label_map.keys(), key=lambda k: int(k) if k.isdigit() else 999)
+                for i, key in enumerate(sorted_keys):
+                    if i < len(themes):
+                        themes[i].label = label_map[key]
 
     trend_raw = json.loads(analysis.trend_data)
     pain_raw = json.loads(analysis.pain_points) if analysis.pain_points else None
