@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 import { useChat } from "@/hooks/useChat";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,13 +63,27 @@ export function ChatPanel({ projectId }: { projectId: string }) {
                 </div>
               )}
               <div
-                className={`rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                className={`rounded-2xl px-4 py-2.5 text-sm ${
                   msg.role === "user"
-                    ? "bg-indigo-600 text-white rounded-br-sm"
+                    ? "bg-indigo-600 text-white rounded-br-sm whitespace-pre-wrap"
                     : "bg-gray-100 text-gray-800 rounded-bl-sm"
                 }`}
               >
-                {msg.content}
+                {msg.role === "user" ? (
+                  msg.content
+                ) : (
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                      strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                      ol: ({ children }) => <ol className="list-decimal list-outside ml-4 mb-2 space-y-1">{children}</ol>,
+                      ul: ({ children }) => <ul className="list-disc list-outside ml-4 mb-2 space-y-1">{children}</ul>,
+                      li: ({ children }) => <li className="pl-1">{children}</li>,
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                )}
               </div>
               {msg.sources && msg.sources.length > 0 && (
                 <div className="space-y-1 ml-1">
@@ -104,7 +119,7 @@ export function ChatPanel({ projectId }: { projectId: string }) {
           onKeyDown={handleKey}
           placeholder="Ask about the reviews… (Enter to send)"
           rows={1}
-          className="flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
         <Button onClick={handleSend} disabled={!input.trim() || loading} size="md">Send</Button>
       </div>

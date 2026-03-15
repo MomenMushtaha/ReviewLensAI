@@ -26,6 +26,9 @@ export async function getProjectReviews(
     limit?: number;
     sentiment?: string;
     rating_min?: number;
+    rating_max?: number;
+    sort_by?: string;
+    sort_dir?: "asc" | "desc";
   } = {}
 ) {
   const qs = new URLSearchParams();
@@ -33,6 +36,9 @@ export async function getProjectReviews(
   if (params.limit) qs.set("limit", String(params.limit));
   if (params.sentiment) qs.set("sentiment", params.sentiment);
   if (params.rating_min) qs.set("rating_min", String(params.rating_min));
+  if (params.rating_max) qs.set("rating_max", String(params.rating_max));
+  if (params.sort_by) qs.set("sort_by", params.sort_by);
+  if (params.sort_dir) qs.set("sort_dir", params.sort_dir);
   const res = await fetch(`${API_BASE}/api/projects/${id}/reviews?${qs}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -65,6 +71,11 @@ export async function sendChat(data: {
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/projects/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(await res.text());
 }
 
 export function getPipelineSSEUrl(projectId: string): string {
