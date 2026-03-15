@@ -6,7 +6,7 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-c", "cd frontend && npm run dev -- --port $PORT"],
       "port": 3000,
-      "autoPort": true
+      "autoPort": false
     }
   ]
 }
