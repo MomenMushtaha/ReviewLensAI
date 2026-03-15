@@ -7,7 +7,7 @@ type Tab = "url" | "csv";
 type AnalysisMode = "quick" | "deep";
 
 interface UrlInputFormProps {
-  onPipelineStarted?: (projectId: string, mode: AnalysisMode) => void;
+  onPipelineStarted?: (projectId: string) => void;
 }
 
 export function UrlInputForm({ onPipelineStarted }: UrlInputFormProps) {
@@ -44,7 +44,7 @@ export function UrlInputForm({ onPipelineStarted }: UrlInputFormProps) {
         formData.append("file", file);
       }
       const { project_id } = await runPipeline(formData);
-      onPipelineStarted?.(project_id, mode);
+      onPipelineStarted?.(project_id);
       // Reset form
       setUrl("");
       setFile(null);
