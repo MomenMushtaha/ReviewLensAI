@@ -82,4 +82,5 @@ export interface ChatMessage {
   }>;
   guardrailTriggered?: boolean;
   guardrailCategory?: string | null;
+  followUps?: string[];
 }
