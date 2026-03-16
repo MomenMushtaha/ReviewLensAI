@@ -36,6 +36,7 @@ export function useChat(projectId: string) {
         sources: data.sources,
         guardrailTriggered: data.guardrail_triggered,
         guardrailCategory: data.guardrail_category,
+        followUps: data.follow_ups,
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch {
