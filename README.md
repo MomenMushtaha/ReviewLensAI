@@ -8,6 +8,14 @@
 
 ---
 
+## System Design
+
+<a href="https://miro.com/app/live-embed/uXjVGs9PLT8=/?focusWidget=3458764665081150097&embedMode=view_only_without_ui">
+  <img src="https://img.shields.io/badge/View%20on-Miro-050038?style=for-the-badge&logo=miro&logoColor=white" alt="View System Design on Miro" />
+</a>
+
+---
+
 ## How It Works
 
 ```
