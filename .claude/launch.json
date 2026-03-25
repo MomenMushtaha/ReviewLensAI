@@ -15,5 +15,11 @@
       "port": 8001,
       "autoPort": false
     }
+    ,{
+      "name": "diagram",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-l", "3099", "."],
+      "port": 3099
+    }
   ]
 }
