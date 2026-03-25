@@ -10,7 +10,9 @@
 
 ## System Design
 
-<iframe width="768" height="432" src="https://miro.com/app/live-embed/uXjVGs9PLT8=/?embedMode=view_only_without_ui&moveToViewport=2896,343,3367,1956&embedId=607068710666" frameborder="0" scrolling="no" allow="fullscreen; clipboard-read; clipboard-write" allowfullscreen></iframe>
+<a href="https://miro.com/app/live-embed/uXjVGs9PLT8=/?embedMode=view_only_without_ui&moveToViewport=2896,343,3367,1956&embedId=607068710666">
+  <img src="https://img.shields.io/badge/View%20on-Miro-050038?style=for-the-badge&logo=miro&logoColor=white" alt="View System Design on Miro" />
+</a>
 
 ---
 
