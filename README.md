@@ -2,7 +2,7 @@
 
 **Review Intelligence Portal** — Paste a Trustpilot URL or upload a CSV to get AI-powered sentiment analysis, theme clustering, rating trends, and a guardrailed Q&A chat assistant.
 
-**Live:** [frontend-ten-virid-65.vercel.app](https://frontend-ten-virid-65.vercel.app)| **API:** [reviewlens-api-l269.onrender.com)](https://reviewlens-api-l269.onrender.com)
+**Live:** [frontend-ten-virid-65.vercel.app](https://frontend-ten-virid-65.vercel.app) | **API:** [reviewlens-api-l269.onrender.com](https://reviewlens-api-l269.onrender.com)
 
 > Built entirely by [Claude Code](https://claude.ai/claude-code) (Anthropic's AI coding agent).
 
@@ -23,7 +23,7 @@ Trustpilot URL / CSV Upload
          |
     [ Scraper ]       httpx + __NEXT_DATA__ JSON extraction + JSON-LD fallback
          |
-    [ Ingester ]      SHA-256 dedupe, Supabase PostgreSQL, pgvector embeddings
+    [ Ingester ]      SHA-256 dedupe, PostgreSQL + pgvector embeddings
          |
     [ Analyzer ]      VADER sentiment, TF-IDF + KMeans theme clustering, trends
          |
@@ -64,8 +64,8 @@ Trustpilot URL / CSV Upload
 
 | Technology | Purpose |
 |---|---|
-| **Next.js 14** | React framework with App Router and SSR |
-| **React 18** | UI component library |
+| **Next.js 16** | React framework with App Router, Turbopack, and SSR |
+| **React 19** | UI component library |
 | **TypeScript** | Type-safe frontend development |
 | **Tailwind CSS** | Utility-first styling with dark glassmorphism theme |
 | **Recharts** | Interactive charts for sentiment and trend visualization |
@@ -78,10 +78,10 @@ Trustpilot URL / CSV Upload
 
 | Technology | Purpose |
 |---|---|
-| **Supabase** | Managed PostgreSQL database with pgvector extension |
+| **PostgreSQL + pgvector** | Vector-enabled relational store (local Docker for dev, managed Postgres for prod) |
 | **Render** | Backend Docker deployment (free tier) |
 | **Vercel** | Frontend hosting with edge network and preview deploys |
-| **Docker** | Backend containerization |
+| **Docker Compose** | Local Postgres + pgvector for development |
 | **GitHub** | Source control and CI/CD integration |
 
 ### AI / ML Pipeline
@@ -119,9 +119,21 @@ Trustpilot URL / CSV Upload
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 20+
-- A Supabase project (or any PostgreSQL with pgvector)
+- Node.js 22+
+- PostgreSQL 16 with the `pgvector` extension (Docker provided, see below)
 - An OpenAI API key
+
+### Database (local)
+
+Spin up Postgres + pgvector with Docker Compose:
+
+```bash
+docker compose up -d
+# Enables the vector extension on first run
+docker exec reviewlens-db psql -U reviewlens -d reviewlens -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+The container exposes Postgres on `localhost:5432` with user/password/db all set to `reviewlens`. Data persists in a named Docker volume.
 
 ### Backend
 
@@ -129,9 +141,15 @@ Trustpilot URL / CSV Upload
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # fill in DATABASE_URL and OPENAI_API_KEY
+cp .env.example .env   # set OPENAI_API_KEY; DATABASE_URL is pre-filled for the Docker DB
 alembic upgrade head
 uvicorn app.main:app --reload
+```
+
+Default `DATABASE_URL` for the Docker setup:
+
+```
+postgresql+asyncpg://reviewlens:reviewlens@localhost:5432/reviewlens
 ```
 
 ### Frontend
@@ -181,5 +199,6 @@ npm run dev
 
 ## Deployment
 
-- **Backend** — Vercel (serverless). See `backend/vercel.json`.
-- **Frontend** — Vercel with Root Directory set to `frontend/`.
+- **Backend** — [Render](https://render.com) as a Docker web service. Declarative config lives in [`render.yaml`](./render.yaml); any push to `main` triggers an auto-deploy. The `backend/Dockerfile` builds the FastAPI app image.
+- **Frontend** — [Vercel](https://vercel.com) with Root Directory set to `frontend/`. Auto-deploys on every push to `main`; preview deployments for pull requests. Manual production deploy with `cd frontend && vercel --prod`.
+- **Environment variables** — Backend secrets (`DATABASE_URL`, `OPENAI_API_KEY`) are managed in the Render dashboard; frontend `NEXT_PUBLIC_API_URL` is set in the Vercel project settings.
