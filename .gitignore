@@ -35,3 +35,13 @@ Thumbs.db
 *.pem
 *.key
 .vercel
+
+# Claude Code
+.claude/
+
+# Test artifacts
+test-results/
+*.heapsnapshot
+
+# Logs
+*.log
