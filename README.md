@@ -93,6 +93,7 @@ Trustpilot URL / CSV Upload
 | **Sentiment** | VADER compound score with star-rating override |
 | **Clustering** | TF-IDF + KMeans (up to 8 themes, sentiment-diverse) |
 | **RAG** | pgvector cosine similarity + 3-layer guardrail system |
+| **Bias Detection** | 9-signal statistical bias engine with adjusted rating (negativity, one-star dominance, expectation gap, marketplace variability, scale, edge cases, power users, platform context, growth vs control) |
 | **Deduplication** | SHA-256 hash of `(source_url + body[:200])` per project |
 
 ## Features
@@ -106,7 +107,8 @@ Trustpilot URL / CSV Upload
 - **Sentiment Analysis** — VADER compound score with star-rating override for extreme ratings (1-2 stars force negative, 4-5 stars force positive)
 - **Theme Discovery** — TF-IDF vectorization + KMeans clustering (up to 8 themes), with guaranteed sentiment diversity
 - **AI Summaries** — OpenAI tool-use API generates labeled themes and an executive brief
-- **Rating Trends** — Monthly average rating and review volume charts via Recharts
+- **Review Bias Intelligence** — 9-signal bias detection engine (negativity bias, one-star dominance, expectation gap, marketplace variability, scale effect, edge case visibility, power user criticism, rating context, growth vs control) computes a bias-adjusted rating with transparent breakdown. All signals are pure statistics — no additional LLM calls
+- **Rating Trends** — Monthly average rating and review volume charts with auto-scaled Y-axis and volume bars via Recharts
 - **Guardrailed Chat** — 3-layer guardrail (regex pre-filter, system prompt boundary, hallucination scan) keeps responses grounded in review data
 - **RAG Retrieval** — pgvector cosine similarity search over 384-dimensional embeddings
 - **Real-time Progress** — Server-Sent Events stream pipeline status to the frontend

@@ -22,4 +22,5 @@ class Analysis(Base):
     highlights: Mapped[str | None] = mapped_column(String, nullable=True)        # JSON
     recommendations: Mapped[str | None] = mapped_column(String, nullable=True)   # JSON
     theme_labels: Mapped[str | None] = mapped_column(String, nullable=True)      # JSON dict
+    bias_analysis: Mapped[str | None] = mapped_column(String, nullable=True)     # JSON BiasAnalysis
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

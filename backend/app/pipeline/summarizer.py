@@ -155,6 +155,19 @@ async def summarize(
     sentiment = analysis_data.get("sentiment_distribution", {})
     rating_dist = analysis_data.get("rating_distribution", {})
 
+    # Build bias context for prompt (only detected signals)
+    bias_context = ""
+    bias_data = analysis_data.get("bias_analysis")
+    if bias_data:
+        detected = [s for s in bias_data.get("signals", []) if s.get("detected")]
+        if detected:
+            lines = [f"- {s['label']} ({s['strength']}): {s['evidence']}" for s in detected]
+            bias_context = (
+                f"\nReview bias signals detected ({bias_data.get('overall_bias_level', 'unknown')} overall):\n"
+                + "\n".join(lines)
+                + "\n"
+            )
+
     user_prompt = f"""Product: {product_name or 'Unknown'}
 Total reviews: {len(all_reviews)}
 Sentiment: {sentiment}
@@ -162,7 +175,7 @@ Rating distribution: {rating_dist}
 
 Theme clusters:
 {theme_summary}
-
+{bias_context}
 Sample reviews:
 {chr(10).join(review_lines)}
 
@@ -172,6 +185,10 @@ Please produce a structured summary using the produce_summary tool."""
         "You are a product intelligence analyst. Analyze the provided review data "
         "and produce a structured executive brief. Be specific, cite patterns from "
         "the data. Do not invent information not present in the reviews. "
+        "When review bias signals are provided, incorporate that context into your "
+        "executive summary — note how biases like negativity bias or scale effects "
+        "might affect interpretation. Do not dismiss negative reviews, but provide "
+        "calibrated context where biases are detected. "
         "For theme_labels, write clear descriptive titles (3-6 words) that capture "
         "the specific topic — e.g. 'Unreliable Refund Process', 'Friendly & Helpful Staff', "
         "'Hidden Fees & Pricing Complaints'. Never use generic labels like 'General Feedback' "

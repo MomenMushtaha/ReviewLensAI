@@ -247,6 +247,20 @@ async def analyze(
     existing = await db.execute(select(Analysis).where(Analysis.project_id == project_id))
     existing_row = existing.scalar_one_or_none()
 
+    # 7b. Bias detection
+    from app.pipeline.bias_detector import detect_biases
+    platform = reviews[0].platform if reviews else "unknown"
+    bias_result = detect_biases(
+        reviews,
+        {
+            "sentiment_distribution": sentiment_distribution,
+            "rating_distribution": rating_distribution,
+            "themes": [t.model_dump() for t in themes],
+            "trend_data": [t.model_dump() for t in trend_data],
+        },
+        platform=platform,
+    )
+
     analysis_data = dict(
         sentiment_distribution=json.dumps(sentiment_distribution),
         rating_distribution=json.dumps(rating_distribution),
@@ -254,6 +268,7 @@ async def analyze(
         trend_data=json.dumps([t.model_dump() for t in trend_data]),
         top_positive_reviews=json.dumps(top_positive),
         top_negative_reviews=json.dumps(top_negative),
+        bias_analysis=json.dumps(bias_result),
     )
 
     if existing_row:
@@ -276,5 +291,6 @@ async def analyze(
         "trend_data": [t.model_dump() for t in trend_data],
         "top_positive_reviews": top_positive,
         "top_negative_reviews": top_negative,
+        "bias_analysis": bias_result,
         "sampled_reviews": [{"body": r.body, "rating": r.rating, "sentiment": r.sentiment} for r in reviews],
     }

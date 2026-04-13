@@ -12,7 +12,7 @@ from app.models.review import Review
 from app.models.analysis import Analysis
 from app.schemas.project import ProjectOut
 from app.schemas.review import ReviewOut
-from app.schemas.analysis import AnalysisOut, ThemeCluster, TrendPoint, PainPoint, Highlight, Recommendation
+from app.schemas.analysis import AnalysisOut, ThemeCluster, TrendPoint, PainPoint, Highlight, Recommendation, BiasAnalysis
 
 router = APIRouter()
 
@@ -120,6 +120,8 @@ async def get_analysis(project_id: str, db: AsyncSession = Depends(get_db)):
     highlights_raw = json.loads(analysis.highlights) if analysis.highlights else None
     recs_raw = json.loads(analysis.recommendations) if analysis.recommendations else None
 
+    bias_raw = json.loads(analysis.bias_analysis) if analysis.bias_analysis else None
+
     return AnalysisOut(
         project_id=project_id,
         sentiment_distribution=json.loads(analysis.sentiment_distribution),
@@ -132,6 +134,7 @@ async def get_analysis(project_id: str, db: AsyncSession = Depends(get_db)):
         pain_points=[PainPoint(**p) for p in pain_raw] if pain_raw else None,
         highlights=[Highlight(**h) for h in highlights_raw] if highlights_raw else None,
         recommendations=[Recommendation(**r) for r in recs_raw] if recs_raw else None,
+        bias_analysis=BiasAnalysis(**bias_raw) if bias_raw else None,
     )
 
 

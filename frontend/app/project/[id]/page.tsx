@@ -12,6 +12,7 @@ import {
   HighlightsList,
   RecommendationsList,
 } from "@/components/SummaryCard";
+import { BiasInsights } from "@/components/BiasInsights";
 import { ReviewTable } from "@/components/ReviewTable";
 import { ChatPanel } from "@/components/ChatPanel";
 import { Badge } from "@/components/ui/badge";
@@ -113,6 +114,9 @@ export default function ProjectPage() {
               <>
                 {analysis.executive_summary && (
                   <SummaryCard summary={analysis.executive_summary} />
+                )}
+                {analysis.bias_analysis && (
+                  <BiasInsights biasAnalysis={analysis.bias_analysis} />
                 )}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   <Card>

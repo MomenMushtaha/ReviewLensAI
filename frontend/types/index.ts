@@ -57,6 +57,31 @@ export interface Recommendation {
   rationale: string;
 }
 
+export interface BiasSignal {
+  bias_type: string;
+  label: string;
+  detected: boolean;
+  strength: string | null;
+  evidence: string;
+  adjustment_note: string;
+}
+
+export interface AdjustmentReason {
+  label: string;
+  adjustment: number;
+  explanation: string;
+}
+
+export interface BiasAnalysis {
+  signals: BiasSignal[];
+  overall_bias_level: string;
+  summary: string;
+  raw_rating: number;
+  adjusted_rating: number;
+  rating_adjustment: number;
+  adjustment_reasons: AdjustmentReason[];
+}
+
 export interface Analysis {
   id: string;
   project_id: string;
@@ -68,6 +93,7 @@ export interface Analysis {
   pain_points: PainPoint[];
   highlights: Highlight[];
   recommendations: Recommendation[];
+  bias_analysis: BiasAnalysis | null;
   created_at: string;
 }
 

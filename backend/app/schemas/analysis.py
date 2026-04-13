@@ -34,6 +34,31 @@ class Recommendation(BaseModel):
     rationale: str
 
 
+class BiasSignal(BaseModel):
+    bias_type: str
+    label: str
+    detected: bool
+    strength: str | None = None
+    evidence: str
+    adjustment_note: str
+
+
+class AdjustmentReason(BaseModel):
+    label: str
+    adjustment: float
+    explanation: str
+
+
+class BiasAnalysis(BaseModel):
+    signals: list[BiasSignal]
+    overall_bias_level: str  # "high" | "moderate" | "low" | "minimal"
+    summary: str
+    raw_rating: float
+    adjusted_rating: float
+    rating_adjustment: float
+    adjustment_reasons: list[AdjustmentReason]
+
+
 class AnalysisOut(BaseModel):
     project_id: str
     sentiment_distribution: dict[str, int]
@@ -46,3 +71,4 @@ class AnalysisOut(BaseModel):
     pain_points: list[PainPoint] | None
     highlights: list[Highlight] | None
     recommendations: list[Recommendation] | None
+    bias_analysis: BiasAnalysis | None = None
