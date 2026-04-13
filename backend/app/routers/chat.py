@@ -6,12 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.project import Project
 from app.models.analysis import Analysis
+from app.models.chat_message import ChatMessage
 from app.agents.rag_agent import answer
 
 router = APIRouter()
 
-# In-memory chat history: session_id → list of {role, content}
-_chat_histories: dict[str, list[dict]] = {}
+MAX_HISTORY_MESSAGES = 16  # 8 turns × 2 messages
 
 
 class ChatRequest(BaseModel):
@@ -51,7 +51,15 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
     )
     analysis = analysis_result.scalar_one_or_none()
 
-    history = _chat_histories.get(req.session_id, [])
+    # Load chat history from DB (last 8 turns = 16 messages)
+    history_result = await db.execute(
+        select(ChatMessage)
+        .where(ChatMessage.project_id == req.project_id, ChatMessage.session_id == req.session_id)
+        .order_by(ChatMessage.created_at.desc())
+        .limit(MAX_HISTORY_MESSAGES)
+    )
+    history_rows = list(reversed(history_result.scalars().all()))
+    history = [{"role": row.role, "content": row.content} for row in history_rows]
 
     response_data = await answer(
         question=req.message,
@@ -61,10 +69,10 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
         analysis=analysis,
     )
 
-    # Update history (keep last 8 turns)
-    history.append({"role": "user", "content": req.message})
-    history.append({"role": "assistant", "content": response_data["response"]})
-    _chat_histories[req.session_id] = history[-16:]  # 8 turns × 2
+    # Persist both messages
+    db.add(ChatMessage(project_id=req.project_id, session_id=req.session_id, role="user", content=req.message))
+    db.add(ChatMessage(project_id=req.project_id, session_id=req.session_id, role="assistant", content=response_data["response"]))
+    await db.commit()
 
     return ChatResponse(
         response=response_data["response"],

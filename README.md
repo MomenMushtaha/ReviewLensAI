@@ -96,10 +96,49 @@ Trustpilot URL / CSV Upload
 | **Bias Detection** | 9-signal statistical bias engine with adjusted rating (negativity, one-star dominance, expectation gap, marketplace variability, scale, edge cases, power users, platform context, growth vs control) |
 | **Deduplication** | SHA-256 hash of `(source_url + body[:200])` per project |
 
+## Review Bias Intelligence
+
+Most review platforms show you a raw average. The problem: **that number is systematically wrong.** Complaint-driven platforms like Trustpilot attract disproportionately negative reviewers, rage-reviewing compresses ratings to 1-star, and high-volume products accumulate negative reviews that look alarming in absolute numbers but represent a tiny fraction of actual users.
+
+ReviewLens runs a **9-signal bias detection engine** on every analysis — all pure statistics, no LLM calls — and computes a **bias-adjusted rating** with a transparent per-signal breakdown:
+
+| Signal | What It Detects |
+|--------|----------------|
+| **Negativity Bias** | >65% negative reviews = self-selection bias (satisfied users don't review on complaint platforms) |
+| **One-Star Dominance** | >60% of reviews are 1-star = rage-reviewing, not nuanced feedback |
+| **Expectation Gap** | Mid-range reviews citing "disappointed", "expected", "not as described" = inflated expectations, not quality failure |
+| **Marketplace Variability** | Bimodal distribution (lots of 1-star AND 5-star) = inconsistent quality across sellers/hosts, average is misleading |
+| **Scale Effect** | High absolute negative count that's actually a small % of total volume |
+| **Edge Case Visibility** | Rare issues (<5% of reviews) clustering into their own theme, appearing disproportionately prominent |
+| **Power User Criticism** | Repeat reviewers rating significantly lower than average — higher standards skew the mean |
+| **Rating Context** | Product rating vs. platform baseline (Trustpilot avg: 4.2) — how much is the platform itself vs. the product |
+| **Growth vs Control** | Review volume increasing while ratings decline = growth outpacing quality control |
+
+### Example: Spotify on Trustpilot
+
+```
+Raw Rating:      1.6 ★★☆☆☆   (200 reviews, 80% negative, 72% one-star)
+Adjusted Rating: 3.2 ★★★☆☆   (+1.6 adjustment)
+
+Breakdown:
+  +0.78  Platform Context — Trustpilot skews toward complaint-driven reviews (baseline: 4.2)
+  +0.48  Negativity Bias  — 80% negative = self-selection, not 80% unhappy users
+  +0.30  One-Star Dominance — 72% are 1-star rage reviews
+  +0.06  Scale Effect — 160 negative reviews = 80% of total, amplified by volume
+
+Bias Level: HIGH (5/9 signals detected)
+```
+
+The adjusted rating doesn't dismiss negative feedback — it contextualizes it. Spotify genuinely has complaints about ads, pricing, and UI changes. But the raw 1.6 on Trustpilot doesn't reflect the experience of 600M+ users who use it daily without complaint. The bias-adjusted 3.2 is a more honest signal.
+
+The bias context is also injected into the AI summarizer's prompt, so the executive summary accounts for detected biases rather than taking the raw sentiment at face value.
+
+---
+
 ## Features
 
 - **Trustpilot Scraper** — `__NEXT_DATA__` extraction with JSON-LD fallback, paginated multi-page scraping, CSV upload support
-- **Quick / Deep Analysis Modes** — Quick (~200 reviews) available now; Deep (~2,000 reviews) coming soon
+- **Quick / Deep Analysis Modes** — Quick (~200 reviews) for fast insights; Deep (~2,000 reviews) via Trustpilot JSON API with adaptive rate-limit handling
 - **Inline Progress** — Real-time pipeline progress shown under Recent Analyses via SSE, no page navigation
 - **Cancel Analysis** — Stop a running analysis mid-scrape with responsive asyncio-based cancellation
 - **Duplicate Detection** — Blocks re-analyzing the same URL + mode combo; matches by URL or product name
