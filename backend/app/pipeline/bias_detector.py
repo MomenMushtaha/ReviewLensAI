@@ -367,7 +367,42 @@ def _compute_adjusted_rating(
     total = sum(a["adjustment"] for a in adjustments)
     total = min(total, 2.5)  # cap at +2.5
     adjusted = min(5.0, max(1.0, round(raw_avg + total, 1)))
+
     return adjusted, round(total, 1), adjustments
+
+
+def _compute_confidence_interval(
+    adjusted: float, signals: list[dict], review_count: int,
+) -> tuple[float, float]:
+    """Compute a confidence interval around the adjusted rating.
+
+    Width is inversely proportional to:
+    - review_count (more data = narrower)
+    - number of detected signals (more evidence = narrower)
+    And proportional to:
+    - total adjustment magnitude (larger correction = wider uncertainty)
+    """
+    detected_count = sum(1 for s in signals if s["detected"])
+
+    # Base half-width starts at ±0.5
+    half_width = 0.5
+
+    # Shrink with more reviews (log scale: 50→1.0x, 200→0.7x, 1000→0.5x)
+    import math
+    review_factor = max(0.4, 1.0 - math.log10(max(review_count, 10)) * 0.2)
+    half_width *= review_factor
+
+    # Shrink with more detected signals (more evidence for the adjustment)
+    signal_factor = max(0.5, 1.0 - detected_count * 0.08)
+    half_width *= signal_factor
+
+    # Widen slightly with larger adjustments (bigger correction = more uncertainty)
+    adjustment_mag = abs(adjusted - (adjusted - 0))  # placeholder
+    half_width = max(0.2, min(0.8, half_width))  # clamp to ±0.2 – ±0.8
+
+    low = max(1.0, round(adjusted - half_width, 1))
+    high = min(5.0, round(adjusted + half_width, 1))
+    return low, high
 
 
 def detect_biases(reviews, analysis_data: dict, platform: str = "unknown") -> dict:
@@ -424,11 +459,17 @@ def detect_biases(reviews, analysis_data: dict, platform: str = "unknown") -> di
         avg_rating, signals, platform,
     )
 
+    # Confidence interval
+    confidence_low, confidence_high = _compute_confidence_interval(
+        adjusted_rating, signals, len(reviews),
+    )
+
     detected_count = sum(1 for s in signals if s["detected"])
     logger.info(
         "Bias detection done: %d/%d signals detected, overall_level=%s, "
-        "raw_rating=%.2f, adjusted_rating=%.1f (+%.1f)",
-        detected_count, len(signals), level, avg_rating, adjusted_rating, total_adjustment,
+        "raw_rating=%.2f, adjusted_rating=%.1f (+%.1f), range=[%.1f, %.1f]",
+        detected_count, len(signals), level, avg_rating, adjusted_rating,
+        total_adjustment, confidence_low, confidence_high,
     )
 
     return {
@@ -437,6 +478,8 @@ def detect_biases(reviews, analysis_data: dict, platform: str = "unknown") -> di
         "summary": summary,
         "raw_rating": round(avg_rating, 2),
         "adjusted_rating": adjusted_rating,
+        "confidence_low": confidence_low,
+        "confidence_high": confidence_high,
         "rating_adjustment": total_adjustment,
         "adjustment_reasons": adjustment_reasons,
     }

@@ -161,11 +161,19 @@ async def summarize(
     if bias_data:
         detected = [s for s in bias_data.get("signals", []) if s.get("detected")]
         if detected:
+            raw = bias_data.get("raw_rating", 0)
+            adj = bias_data.get("adjusted_rating", 0)
+            low = bias_data.get("confidence_low", adj)
+            high = bias_data.get("confidence_high", adj)
             lines = [f"- {s['label']} ({s['strength']}): {s['evidence']}" for s in detected]
             bias_context = (
-                f"\nReview bias signals detected ({bias_data.get('overall_bias_level', 'unknown')} overall):\n"
+                f"\nBias-adjusted rating: The raw average is {raw:.1f} but after accounting for "
+                f"detected biases, the bias-adjusted rating is {adj:.1f} "
+                f"(confidence range: {low:.1f} – {high:.1f}).\n"
+                f"Review bias signals detected ({bias_data.get('overall_bias_level', 'unknown')} overall):\n"
                 + "\n".join(lines)
-                + "\n"
+                + "\n\nIMPORTANT: Reference the bias-adjusted rating in the executive summary. "
+                + "Explain what the raw vs adjusted rating means for this product.\n"
             )
 
     user_prompt = f"""Product: {product_name or 'Unknown'}

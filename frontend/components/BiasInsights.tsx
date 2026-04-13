@@ -81,6 +81,11 @@ export function BiasInsights({ biasAnalysis }: { biasAnalysis: BiasAnalysis }) {
                 {biasAnalysis.adjusted_rating.toFixed(1)}
               </p>
               <Stars rating={biasAnalysis.adjusted_rating} />
+              {hasAdjustment && biasAnalysis.confidence_low != null && (
+                <p className="text-[10px] text-zinc-600 mt-1">
+                  range: {biasAnalysis.confidence_low.toFixed(1)} – {biasAnalysis.confidence_high.toFixed(1)}
+                </p>
+              )}
             </div>
           </div>
 

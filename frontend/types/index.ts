@@ -78,6 +78,8 @@ export interface BiasAnalysis {
   summary: string;
   raw_rating: number;
   adjusted_rating: number;
+  confidence_low: number;
+  confidence_high: number;
   rating_adjustment: number;
   adjustment_reasons: AdjustmentReason[];
 }

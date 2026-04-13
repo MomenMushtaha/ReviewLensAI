@@ -55,6 +55,8 @@ class BiasAnalysis(BaseModel):
     summary: str
     raw_rating: float
     adjusted_rating: float
+    confidence_low: float
+    confidence_high: float
     rating_adjustment: float
     adjustment_reasons: list[AdjustmentReason]
 
